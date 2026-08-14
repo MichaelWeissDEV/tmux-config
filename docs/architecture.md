@@ -195,6 +195,22 @@ reports no error. With it, the format is expanded first.
 `set -F` handles every pass-through setting in this config. `%if` is only used
 where a setting needs several lines or a different code path.
 
+### Colour options versus style options
+
+There is an asymmetry here that is easy to trip over, and it fails in the
+worst way — the option keeps its old value and tmux carries on.
+
+| Option kind | Example | Needs `-F`? |
+| --- | --- | :---: |
+| **Style** (`*-style`) | `pane-active-border-style "fg=#{@thm_accent}"` | no — expanded when drawn |
+| **Colour** (`*-colour`) | `display-panes-colour "#{@thm_subtle}"` | **yes** |
+
+Colour-typed options are validated at set time and do not expand formats, so
+without `-F` tmux reports `bad colour: #{@thm_subtle}` and keeps its default.
+Three lines in `60-status.conf` were wrong this way until
+`scripts/check` caught it — the parse check (`source-file -n`) sees it, while
+simply loading the config does not, because the message is not fatal.
+
 ---
 
 ## The one place strftime bites
