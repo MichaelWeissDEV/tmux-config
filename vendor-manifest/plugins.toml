@@ -42,8 +42,8 @@ enabled_by_default = false
 license            = "MIT"
 purpose            = "Periodic automatic save, and restore on server start."
 requires           = ["tmux-resurrect"]
-last_synced_commit = ""
-last_synced_date   = ""
+last_synced_commit = "427289b08f36bede1431144d1fb77a2c1e0c1f0d"
+last_synced_date   = "2026-08-15"
 
 [vim-tmux-navigator]
 path               = "vendor/vim-tmux-navigator"
