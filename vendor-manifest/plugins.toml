@@ -69,8 +69,8 @@ option             = "@cfg_plugin_open"
 enabled_by_default = false
 license            = "MIT"
 purpose            = "Open a highlighted file or URL from copy mode."
-last_synced_commit = ""
-last_synced_date   = ""
+last_synced_commit = "85d01d4fdcb0d92b05732b7898c90664c54da11f"
+last_synced_date   = "2026-08-15"
 
 [tmux-sessionist]
 path               = "vendor/tmux-sessionist"
