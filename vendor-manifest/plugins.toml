@@ -29,8 +29,8 @@ option             = "@cfg_plugin_resurrect"
 enabled_by_default = false
 license            = "MIT"
 purpose            = "Save and restore sessions, windows, panes and layouts."
-last_synced_commit = ""   # filled in by scripts/update-vendor
-last_synced_date   = ""
+last_synced_commit = "38bbf8b617661bf199d34ec390aba5a5512f9ce6"
+last_synced_date   = "2026-08-15"
 
 [tmux-continuum]
 path               = "vendor/tmux-continuum"
