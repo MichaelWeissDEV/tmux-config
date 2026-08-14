@@ -62,6 +62,7 @@ nav:
   - Under the hood:
       - Philosophy: philosophy.md
       - Architecture: architecture.md
+      - Publishing: publishing.md
   - Help:
       - Troubleshooting: troubleshooting.md
       - Diagnostics: diagnostics.md

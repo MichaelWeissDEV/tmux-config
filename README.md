@@ -7,6 +7,11 @@
 One file to configure · six themes · no plugins required
 macOS · Linux · WSL2 · MSYS2/Cygwin
 
+[![CI](https://github.com/MichaelWeissDEV/tmux-config/actions/workflows/ci.yml/badge.svg)](https://github.com/MichaelWeissDEV/tmux-config/actions/workflows/ci.yml)
+[![Docs](https://readthedocs.org/projects/tmux-config/badge/?version=latest)](https://tmux-config.readthedocs.io/en/latest/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![tmux 3.3+](https://img.shields.io/badge/tmux-3.3%2B-1BB91F?logo=tmux&logoColor=white)](https://github.com/tmux/tmux)
+
 [**Documentation**](https://tmux-config.readthedocs.io) ·
 [Installation](https://tmux-config.readthedocs.io/en/latest/installation/) ·
 [Configuration](https://tmux-config.readthedocs.io/en/latest/configuration/) ·
