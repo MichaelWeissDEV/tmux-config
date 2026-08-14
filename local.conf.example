@@ -1,0 +1,225 @@
+# ==============================================================================
+#  local.conf — your personal overrides
+# ==============================================================================
+#
+#      cp local.conf.example local.conf
+#
+#  This file is loaded LAST, after every module, so anything here wins.
+#  It is gitignored, so your tweaks survive `git pull` and never conflict.
+#
+#  Everything below is commented out and ready to use: uncomment what you want.
+#  Each recipe says what it costs, because most of them cost something.
+#
+#  Full explanations: https://tmux-config.readthedocs.io/en/latest/recipes/
+#
+# ------------------------------------------------------------------------------
+#  Two things worth knowing before you edit
+# ------------------------------------------------------------------------------
+#
+#  1. To change a setting that already exists, prefer overriding its option
+#     here rather than editing config/00-options.conf — then `git pull` can
+#     never produce a conflict:
+#
+#         set -g @cfg_theme "nord"
+#
+#  2. `%if` here CAN test options from 00-options.conf (that file was parsed
+#     long before this one), but NOT options you set earlier in this same file.
+#     Use `if-shell -F` for the latter. See docs/architecture.md#the-if-trap.
+# ==============================================================================
+
+
+# ==============================================================================
+#  1. Quick settings overrides
+# ==============================================================================
+#  The most common things people change. Full list: docs/reference/options.md
+
+# set -g @cfg_theme        "nord"      # catppuccin-latte, tokyonight, gruvbox-dark, rose-pine
+# set -g @cfg_prefix       "C-a"       # screen-style prefix
+# set -g @cfg_status_style "minimal"   # drop the clock and date
+# set -g @cfg_symbols      "ascii"     # never use Unicode separators
+# set -g @cfg_mouse        "off"       # give the terminal back its own selection
+
+# Alt+1..9 steals those keys from apps inside your panes. Turn it off if you
+# use a terminal browser, a TUI with Alt shortcuts, or Windows Terminal tabs.
+# set -g @cfg_alt_window_keys "off"
+
+
+# ==============================================================================
+#  2. Popups  (tmux 3.2+)
+# ==============================================================================
+#  A floating window over the current session. Nothing is added to your layout,
+#  and closing it leaves no trace. prefix+g already opens a scratch shell.
+
+# --- lazygit in the current repo ----------------------------------------------
+# bind -N "Open lazygit" G display-popup -E -w 90% -h 90% \
+#   -d "#{pane_current_path}" lazygit
+
+# --- a quick note file --------------------------------------------------------
+# bind -N "Open notes" N display-popup -E -w 70% -h 70% \
+#   "\${EDITOR:-vi} ~/notes.md"
+
+# --- read a man page without losing your layout -------------------------------
+# bind -N "Look up a man page" M command-prompt -p "man:" \
+#   "display-popup -E -w 80% -h 80% 'man %%'"
+
+# --- a calculator -------------------------------------------------------------
+# bind -N "Calculator" C display-popup -E -w 40% -h 40% "python3 -q"
+
+# --- htop ---------------------------------------------------------------------
+# bind -N "Process viewer" T display-popup -E -w 90% -h 90% "htop"
+
+
+# ==============================================================================
+#  3. Session and project switching
+# ==============================================================================
+
+# --- fzf session switcher (needs fzf) -----------------------------------------
+# Faster than choose-tree once you have more than a handful of sessions.
+# bind -N "Switch session (fzf)" C-s display-popup -E -w 40% -h 40% "\
+#   tmux list-sessions -F '#{session_name}' \
+#   | fzf --reverse --header='switch session' \
+#   | xargs -r tmux switch-client -t"
+
+# --- open a project directory as its own session ------------------------------
+# Adjust the search root. `-d 1` keeps it to direct children.
+# bind -N "Open a project" P display-popup -E -w 60% -h 60% "\
+#   find ~/src -mindepth 1 -maxdepth 1 -type d \
+#   | fzf --reverse --header='open project' \
+#   | xargs -r -I{} sh -c 'tmux new-session -d -s \$(basename {} | tr . _) -c {} 2>/dev/null; \
+#                          tmux switch-client -t \$(basename {} | tr . _)'"
+
+# --- jump back to the last session --------------------------------------------
+# bind -N "Last session" Space switch-client -l
+
+
+# ==============================================================================
+#  4. Status bar additions
+# ==============================================================================
+#
+#  PERFORMANCE — read this before uncommenting anything here.
+#
+#  A `#(command)` in the status bar forks a process on EVERY refresh, for EVERY
+#  attached client. At the default 5 s interval with two clients attached that
+#  is a process every 2.5 seconds, forever. This is the single most common
+#  reason a tmux config feels heavy.
+#
+#  If you add one: keep the command under ~50 ms and raise the interval.
+
+# --- current git branch -------------------------------------------------------
+# set -g status-interval 15
+# set -ag status-right "#[fg=#{@thm_subtle}]#{@sym_sep} #[fg=#{@thm_muted}]\
+# #(cd '#{pane_current_path}' && git branch --show-current 2>/dev/null) "
+
+# --- an SSH warning, so you never type the wrong thing on the wrong host ------
+# Costs nothing: it is a format, not a subprocess.
+# set -ag status-right "#{?#{==:#{@cap_ssh},yes},#[fg=#{@thm_urgent}#,bold] SSH ,}"
+
+# --- show the hostname only when remote ---------------------------------------
+# set -ag status-right "#{?#{==:#{@cap_ssh},yes},#[fg=#{@thm_accent}] #h ,}"
+
+# --- battery, without a plugin or a subprocess on Linux ------------------------
+# set -g status-interval 30
+# set -ag status-right "#[fg=#{@thm_muted}]#(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null)% "
+
+
+# ==============================================================================
+#  5. Appearance tweaks
+# ==============================================================================
+
+# --- move the status bar to the top -------------------------------------------
+# set -g @cfg_status_position "top"
+
+# --- override a single theme colour -------------------------------------------
+#  Theme variables are ordinary options. Anything that already consumed the old
+#  value must be re-applied, because 60-status.conf was parsed before this file.
+# set -g @thm_accent "#ff8800"
+# set -g pane-active-border-style "fg=#{@thm_accent}"
+# set -g status-left "#{?client_prefix,#[bg=#{@thm_urgent}],#[bg=#{@thm_accent}]}\
+# #[fg=#{@thm_bg},bold] #S #[default] "
+
+# --- powerline separators (needs a patched/Nerd Font) -------------------------
+# set -g window-status-current-format \
+#   "#[fg=#{@thm_surface},bg=#{@thm_bg}]#[fg=#{@thm_accent},bg=#{@thm_surface},bold] #I \
+# #[fg=#{@thm_fg}]#W #[fg=#{@thm_surface},bg=#{@thm_bg}]"
+
+# --- pane titles above each pane ----------------------------------------------
+# Costs one line of height per pane.
+# set -g pane-border-status top
+# set -g pane-border-format " #{pane_index}: #{pane_current_command} "
+
+# --- dim inactive panes -------------------------------------------------------
+# set -g @cfg_dim_inactive "on"
+
+
+# ==============================================================================
+#  6. Copy mode
+# ==============================================================================
+
+# --- copy without leaving copy mode -------------------------------------------
+# set -g @cfg_copy_stays_in_mode "on"
+
+# --- yank the whole pane's visible text ---------------------------------------
+# bind -N "Copy the visible pane" Y \
+#   run-shell "tmux capture-pane -p | tmux load-buffer - && tmux display 'pane copied'"
+
+# --- copy the current pane's path ---------------------------------------------
+# bind -N "Copy the current path" C-y \
+#   run-shell "printf '%s' '#{pane_current_path}' | tmux load-buffer - && tmux display 'path copied'"
+
+# --- open a URL from the visible pane (needs fzf) ------------------------------
+# bind -N "Open a URL from this pane" u display-popup -E -w 70% -h 40% "\
+#   tmux capture-pane -p -S -3000 \
+#   | grep -oE 'https?://[^ \"'\\'')>]+' | sort -u \
+#   | fzf --reverse --header='open URL' \
+#   | xargs -r \${BROWSER:-open}"
+
+
+# ==============================================================================
+#  7. Machine-specific configuration
+# ==============================================================================
+#  One dotfiles repo, different behaviour per host.
+
+# if-shell -b '[ "$(hostname -s)" = "work-laptop" ]' " \
+#   set -g @thm_accent '#f38ba8' ; \
+#   set -g status-position top "
+
+# Only on a remote host, so you can tell sessions apart at a glance.
+# %if "#{==:#{@cap_ssh},yes}"
+#   set -g @cfg_prefix "C-a"          # avoid clashing with the outer tmux
+#   set -g @thm_accent "#f9e2af"      # visibly different colour when remote
+# %endif
+
+# On a machine without a UTF-8 locale you can force ASCII rather than relying
+# on detection.
+# %if "#{!=:#{@cap_utf8},yes}"
+#   set -g @cfg_symbols "ascii"
+# %endif
+
+
+# ==============================================================================
+#  8. Plugins
+# ==============================================================================
+#  Plugins are vendored in this repository — no plugin manager, no download at
+#  startup. They must be vendored once by a maintainer:
+#
+#      ./scripts/update-vendor --list          what is available and present
+#      ./scripts/update-vendor --add tmux-resurrect
+#
+#  Then enable them here. See docs/plugins.md.
+
+# set -g @cfg_plugins "on"            # master switch — required for any plugin
+
+# set -g @cfg_plugin_resurrect  "on"  # save/restore sessions across reboots
+# set -g @cfg_plugin_continuum  "on"  # automatic save (requires resurrect)
+# set -g @cfg_plugin_navigator  "on"  # shared Ctrl-hjkl with Neovim
+# set -g @cfg_plugin_open       "on"  # open a file/URL from copy mode
+# set -g @cfg_plugin_sessionist "on"  # extra session management
+# set -g @cfg_plugin_logging    "on"  # save pane output to a file
+# set -g @cfg_plugin_extrakto   "on"  # fuzzy-grab any text from the screen
+# set -g @cfg_plugin_fpp        "on"  # pick a file path out of pane output
+
+# --- plugin settings worth changing -------------------------------------------
+# set -g @resurrect-processes 'ssh psql mysql sqlite3 top htop btop nvim'
+# set -g @continuum-save-interval '5'
+# set -g @extrakto_split_direction 'p'      # show extrakto in a popup
+# set -g @logging-path "$HOME/tmux-logs"

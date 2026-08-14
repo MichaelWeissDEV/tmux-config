@@ -1,0 +1,178 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  tests/run — the full test suite
+# ==============================================================================
+#
+#  Usage:  ./tests/run          everything
+#          ./tests/run matrix   only the TERM/locale matrix
+#
+#  What this covers that `scripts/check` does not: it loads the config under a
+#  RANGE of environments and asserts the resulting behaviour, rather than
+#  checking the config in one environment. Capability degradation is only real
+#  if it is exercised.
+#
+#  Exit status: 0 all passed, 1 otherwise.
+# ==============================================================================
+
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PASS=0; FAIL=0
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+
+# Materialise the repo with paths rewritten, so tests run against the working
+# tree whether or not it is the installed copy.
+build() {
+  rm -rf "$STAGE/cfg"; mkdir -p "$STAGE/cfg"
+  for d in config capabilities terminals plugins scripts; do
+    [ -d "$ROOT/$d" ] && cp -R "$ROOT/$d" "$STAGE/cfg/$d"
+  done
+  sed "s|~/.config/tmux|$STAGE/cfg|g; s|\$HOME/.config/tmux|$STAGE/cfg|g" \
+    "$ROOT/tmux.conf" > "$STAGE/cfg/tmux.conf"
+  for f in "$STAGE"/cfg/*/*.conf; do
+    [ -f "$f" ] || continue
+    sed "s|~/.config/tmux|$STAGE/cfg|g; s|\$HOME/.config/tmux|$STAGE/cfg|g" "$f" > "$f.n" \
+      && mv "$f.n" "$f"
+  done
+}
+
+# opt <name> <value> — override an option in the staged copy
+opt() {
+  sed "s|^set -g $1 .*|set -g $1 \"$2\"|" "$STAGE/cfg/config/00-options.conf" > "$STAGE/o" \
+    && mv "$STAGE/o" "$STAGE/cfg/config/00-options.conf"
+}
+
+# start <socket> [env...] — load the staged config, return once settled
+start() {
+  s="$1"; shift
+  env "$@" tmux -f "$STAGE/cfg/tmux.conf" -L "$s" new-session -d 2>"$STAGE/err"
+  sleep 0.8
+}
+stop() { tmux -L "$1" kill-server 2>/dev/null; }
+val()  { tmux -L "$1" show -gv "$2" 2>/dev/null; }
+
+assert() { # assert <label> <expected> <actual>
+  if [ "$2" = "$3" ]; then
+    PASS=$((PASS+1)); printf '  ok    %s\n' "$1"
+  else
+    FAIL=$((FAIL+1)); printf '  FAIL  %s\n        expected "%s", got "%s"\n' "$1" "$2" "$3"
+  fi
+}
+assert_ne() {
+  if [ "$2" != "$3" ]; then PASS=$((PASS+1)); printf '  ok    %s\n' "$1"
+  else FAIL=$((FAIL+1)); printf '  FAIL  %s (should not be "%s")\n' "$1" "$2"; fi
+}
+
+printf '\ntmux-config tests\n'
+
+# ------------------------------------------------------------------------------
+printf '\nLoads cleanly under each TERM\n'
+# ------------------------------------------------------------------------------
+#  Not an emulation of these terminals — the point is that the config never
+#  errors and always produces a usable colour setting, however odd TERM is.
+build
+for t in xterm xterm-256color screen screen-256color tmux tmux-256color \
+         xterm-kitty alacritty foot wezterm linux dumb vt100; do
+  start "t-$t" "TERM=$t" LANG=en_US.UTF-8
+  E="$(cat "$STAGE/err")"
+  A="$(val "t-$t" @thm_accent)"
+  if [ -z "$E" ] && [ -n "$A" ]; then
+    PASS=$((PASS+1)); printf '  ok    TERM=%-16s colors=%s\n' "$t" "$(val "t-$t" @cap_colors)"
+  else
+    FAIL=$((FAIL+1)); printf '  FAIL  TERM=%-16s err=%s accent=%s\n' "$t" "$E" "$A"
+  fi
+  stop "t-$t"
+done
+
+# ------------------------------------------------------------------------------
+printf '\nCapability detection\n'
+# ------------------------------------------------------------------------------
+build
+start c1 TERM=xterm-256color COLORTERM=truecolor LANG=en_US.UTF-8
+assert "COLORTERM=truecolor detected"    "yes"  "$(val c1 @cap_truecolor)"
+assert "  and colour depth is 16m"       "16m"  "$(val c1 @cap_colors)"
+assert "UTF-8 locale detected"           "yes"  "$(val c1 @cap_utf8)"
+assert "not flagged as SSH"              "no"   "$(val c1 @cap_ssh)"
+stop c1
+
+start c2 TERM=xterm-256color LC_ALL=C LANG=C
+assert "non-UTF-8 locale detected"       "no"   "$(val c2 @cap_utf8)"
+assert "  falls back to ASCII separator" "|"    "$(val c2 @sym_sep)"
+assert "  and ASCII dot"                 "-"    "$(val c2 @sym_dot)"
+stop c2
+
+start c3 TERM=xterm-256color LANG=en_US.UTF-8 SSH_CONNECTION="10.0.0.1 22 10.0.0.2 22"
+assert "SSH detected"                    "yes"  "$(val c3 @cap_ssh)"
+stop c3
+
+start c4 TERM=linux LANG=en_US.UTF-8
+assert "linux console is 16 colours"     "16"   "$(val c4 @cap_colors)"
+assert "  and not truecolor"             "no"   "$(val c4 @cap_truecolor)"
+stop c4
+
+start c5 TERM=xterm-kitty LANG=en_US.UTF-8
+assert "kitty inferred as truecolor"     "yes"  "$(val c5 @cap_truecolor)"
+stop c5
+
+# ------------------------------------------------------------------------------
+printf '\nTri-state overrides beat detection\n'
+# ------------------------------------------------------------------------------
+build; opt @cfg_symbols ascii
+start o1 TERM=xterm-256color LANG=en_US.UTF-8
+assert "symbols=ascii forces ASCII despite UTF-8" "|" "$(val o1 @sym_sep)"
+stop o1
+
+build; opt @cfg_symbols unicode
+start o2 TERM=xterm-256color LC_ALL=C LANG=C
+assert_ne "symbols=unicode forces Unicode despite C locale" "|" "$(val o2 @sym_sep)"
+stop o2
+
+build; opt @cfg_extended_keys off
+start o3 TERM=xterm-256color LANG=en_US.UTF-8
+assert "extended_keys=off applied" "off" "$(tmux -L o3 show -sv extended-keys 2>/dev/null)"
+stop o3
+
+# ------------------------------------------------------------------------------
+printf '\nNeovim input safety (the hard rule)\n'
+# ------------------------------------------------------------------------------
+build
+start n1 TERM=xterm-256color LANG=en_US.UTF-8
+RK="$(tmux -L n1 list-keys -T root 2>/dev/null)"
+UNSAFE=""
+for k in C-h C-j C-k C-l C-w C-v C-o Escape; do
+  printf '%s' "$RK" | grep -qE "^bind-key +-T root +$k " && UNSAFE="$UNSAFE $k"
+done
+assert "no Ctrl key intercepted by default" "" "$UNSAFE"
+stop n1
+
+# The navigator plugin is the documented exception — it MUST intercept.
+build; opt @cfg_plugins on; opt @cfg_plugin_navigator on
+start n2 TERM=xterm-256color LANG=en_US.UTF-8
+assert "config still loads with navigator on" "" "$(cat "$STAGE/err")"
+stop n2
+
+# ------------------------------------------------------------------------------
+printf '\nOption round-trip\n'
+# ------------------------------------------------------------------------------
+build; opt @cfg_history_limit 4242; opt @cfg_escape_time 25; opt @cfg_base_index 0
+start r1 TERM=xterm-256color LANG=en_US.UTF-8
+assert "history-limit passed through" "4242" "$(val r1 history-limit)"
+assert "escape-time passed through"   "25"   "$(tmux -L r1 show -sv escape-time)"
+assert "base-index passed through"    "0"    "$(val r1 base-index)"
+stop r1
+
+build
+for th in catppuccin-mocha catppuccin-latte tokyonight nord gruvbox-dark rose-pine; do
+  opt @cfg_theme "$th"
+  start "th-$th" TERM=xterm-256color LANG=en_US.UTF-8
+  A="$(val "th-$th" @thm_accent)"
+  case "$A" in "#"*) PASS=$((PASS+1)); printf '  ok    theme %s -> %s\n' "$th" "$A" ;;
+               *) FAIL=$((FAIL+1)); printf '  FAIL  theme %s -> "%s"\n' "$th" "$A" ;; esac
+  stop "th-$th"
+  build
+done
+
+# ------------------------------------------------------------------------------
+printf '\n%d passed, %d failed\n\n' "$PASS" "$FAIL"
+[ "$FAIL" -gt 0 ] && exit 1
+exit 0

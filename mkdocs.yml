@@ -1,0 +1,121 @@
+site_name: tmux-config
+site_description: >-
+  A readable, portable, fast tmux configuration — one file to configure,
+  six themes, no plugins required. macOS, Linux, WSL2 and MSYS2.
+site_url: https://tmux-config.readthedocs.io/
+site_author: Michael Weiss
+copyright: Copyright &copy; 2026 Michael Weiss — MIT License
+repo_url: https://github.com/MichaelWeissDEV/tmux-config
+repo_name: tmux-config
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - search.highlight
+    - search.suggest
+  palette:
+    # Follows the reader's system setting, with a manual toggle.
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Getting started:
+      - Configuration: configuration.md
+      - Keybindings: keybindings.md
+      - Theming: theming.md
+      - Recipes: recipes.md
+  - Portability:
+      - Capabilities: capabilities.md
+      - Neovim: neovim.md
+      - Plugins: plugins.md
+  - Under the hood:
+      - Philosophy: philosophy.md
+      - Architecture: architecture.md
+  - Help:
+      - Troubleshooting: troubleshooting.md
+      - Diagnostics: diagnostics.md
+  - Reference:
+      - Options: reference/options.md
+      - Compatibility: compatibility.md
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+# Treat broken internal links and anchors as warnings so that
+# `fail_on_warning: true` in .readthedocs.yaml actually blocks a bad build.
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/MichaelWeissDEV/tmux-config
+
+# `tmux` is not a Pygments lexer. Highlighting config files as `ini` gives
+# sensible comment and key/value colouring without a custom lexer.
+extra_css:
+  - stylesheets/extra.css

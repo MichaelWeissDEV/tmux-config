@@ -1,0 +1,60 @@
+name: Bug report
+description: Something does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: please run `./scripts/doctor`. It catches most problems
+        on its own and tells you the fix — especially missing terminfo, a
+        non-UTF-8 locale, and a config installed at the wrong path.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      placeholder: |
+        1. Set @cfg_... to ...
+        2. Press prefix + ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: info
+    attributes:
+      label: Output of ./scripts/info --fresh
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of ./scripts/doctor
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: tmux
+    attributes:
+      label: tmux version
+      placeholder: "tmux 3.5a"
+    validations:
+      required: true
+
+  - type: textarea
+    id: local
+    attributes:
+      label: Your local.conf, if you have one
+      description: Overrides in local.conf win over everything, so they matter here.
+      render: tmux

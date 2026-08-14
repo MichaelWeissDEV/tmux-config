@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static checks + behaviour tests on the two platforms most users are on.
+  # ---------------------------------------------------------------------------
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tmux
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew install tmux
+          else
+            sudo apt-get update && sudo apt-get install -y tmux locales
+            # The suite asserts UTF-8 degradation, so a real UTF-8 locale must
+            # exist for the positive cases to mean anything.
+            sudo locale-gen en_US.UTF-8
+          fi
+          tmux -V
+
+      - name: Static checks
+        run: ./scripts/check
+
+      - name: Behaviour tests
+        run: ./tests/run
+
+      - name: Doctor (informational)
+        run: ./scripts/doctor || true
+
+  # ---------------------------------------------------------------------------
+  # Distro matrix. Catches busybox/musl and minimal-image differences that a
+  # GitHub runner hides — the environments where locale and clipboard tooling
+  # are actually absent.
+  # ---------------------------------------------------------------------------
+  distros:
+    name: ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:stable", "fedora:latest", "archlinux:latest", "alpine:latest"]
+    steps:
+      - name: Install prerequisites
+        shell: sh
+        run: |
+          if   command -v apt-get >/dev/null; then
+            apt-get update && apt-get install -y tmux git ncurses-term locales
+          elif command -v dnf >/dev/null; then
+            dnf install -y tmux git ncurses procps-ng
+          elif command -v pacman >/dev/null; then
+            pacman -Sy --noconfirm tmux git ncurses
+          elif command -v apk >/dev/null; then
+            apk add --no-cache tmux git ncurses bash procps
+          fi
+          tmux -V
+
+      - uses: actions/checkout@v4
+
+      - name: Static checks
+        shell: sh
+        run: ./scripts/check
+
+      - name: Behaviour tests
+        shell: sh
+        run: ./tests/run
+
+  # ---------------------------------------------------------------------------
+  # The docs must build exactly as Read the Docs builds them.
+  # ---------------------------------------------------------------------------
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-docs.txt
+      - name: Build docs (strict — broken links fail)
+        run: mkdocs build --strict
+
+      # The keybindings and options pages are generated. If a contributor
+      # changed the config without regenerating them, the published docs would
+      # silently describe something that no longer exists.
+      - name: Install tmux for generator check
+        run: sudo apt-get update && sudo apt-get install -y tmux
+      - name: Generated docs are in sync
+        run: |
+          ./scripts/gen-options.py > /tmp/options.md
+          ./scripts/gen-keybindings.sh > /tmp/keys.md
+          diff -u docs/reference/options.md /tmp/options.md
+          diff -u docs/keybindings.md /tmp/keys.md

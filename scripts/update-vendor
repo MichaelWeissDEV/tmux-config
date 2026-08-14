@@ -1,0 +1,123 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  update-vendor — add or update a vendored plugin (maintainer tool)
+# ==============================================================================
+#
+#  Usage:
+#      ./scripts/update-vendor --add  <name>    first-time vendoring
+#      ./scripts/update-vendor --pull <name>    update to upstream HEAD
+#      ./scripts/update-vendor --pull-all       update everything
+#      ./scripts/update-vendor --list           show manifest state
+#
+#  END USERS NEVER RUN THIS. Plugins ship inside the repository, pinned. The
+#  update path for a user is `git pull` on this repo, which brings a plugin
+#  snapshot that has actually been tested together with the config.
+#
+#  That is the whole point of vendoring over TPM: no network at tmux startup,
+#  reproducible checkouts, and an upstream change cannot break a user's
+#  terminal on a Monday morning.
+# ==============================================================================
+
+set -eu
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+MANIFEST="$ROOT/vendor-manifest/plugins.toml"
+
+die() { printf 'error: %s\n' "$1" >&2; exit 1; }
+
+[ -f "$MANIFEST" ] || die "manifest not found: $MANIFEST"
+# Only the subtree operations need git. `--list` just reads the manifest, and
+# must keep working in a plain unpacked copy.
+require_git() {
+  command -v git >/dev/null 2>&1 || die "git is required for this operation"
+  git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die \
+"not a git repository.
+
+  git subtree needs a repo with at least one commit. Set one up with:
+
+      cd $ROOT
+      git init
+      git add -A && git commit -m 'Initial commit'
+
+  Then run this again."
+}
+
+# Read one key for one plugin out of the TOML. Deliberately a small awk rather
+# than a TOML library: this must run on a bare CI image with no Python.
+field() {
+  awk -v sect="[$1]" -v key="$2" '
+    $0 == sect { in_s = 1; next }
+    /^\[/      { in_s = 0 }
+    in_s && $1 == key { $1=""; $2=""; gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/"/, ""); print; exit }
+  ' "$MANIFEST"
+}
+
+names() { grep -o '^\[[a-z0-9-]*\]' "$MANIFEST" | tr -d '[]' | grep -v '^meta$'; }
+
+do_add() {
+  name="$1"
+  path="$(field "$name" path)";  up="$(field "$name" upstream)";  br="$(field "$name" branch)"
+  [ -n "$path" ] || die "unknown plugin: $name (see --list)"
+  [ -d "$ROOT/$path" ] && die "$path already exists — use --pull instead"
+  require_git
+  printf 'Adding %s from %s (%s)\n' "$name" "$up" "$br"
+  git -C "$ROOT" subtree add --prefix "$path" "$up" "$br" --squash
+  record "$name" "$path"
+}
+
+do_pull() {
+  name="$1"
+  path="$(field "$name" path)";  up="$(field "$name" upstream)";  br="$(field "$name" branch)"
+  [ -n "$path" ] || die "unknown plugin: $name"
+  [ -d "$ROOT/$path" ] || die "$path is not vendored yet — use --add"
+  require_git
+  printf 'Updating %s\n' "$name"
+  git -C "$ROOT" subtree pull --prefix "$path" "$up" "$br" --squash
+  record "$name" "$path"
+}
+
+# Write the synced revision back into the manifest, so a release can always be
+# traced to exact plugin versions.
+record() {
+  name="$1"; path="$2"
+  sha="$(git -C "$ROOT" log -1 --format=%H -- "$path" 2>/dev/null || printf '')"
+  today="$(date +%Y-%m-%d)"
+  tmp="$(mktemp)"
+  awk -v sect="[$name]" -v sha="$sha" -v d="$today" '
+    $0 == sect { in_s = 1; print; next }
+    /^\[/      { in_s = 0 }
+    in_s && $1 == "last_synced_commit" { print "last_synced_commit = \"" sha "\""; next }
+    in_s && $1 == "last_synced_date"   { print "last_synced_date   = \"" d "\"";  next }
+    { print }
+  ' "$MANIFEST" > "$tmp" && mv "$tmp" "$MANIFEST"
+
+  # Keep a copy of the licence next to the manifest, so redistribution
+  # obligations are visible without digging through vendor/.
+  for cand in LICENSE LICENSE.md LICENCE COPYING; do
+    if [ -f "$ROOT/$path/$cand" ]; then
+      cp "$ROOT/$path/$cand" "$ROOT/vendor-manifest/licenses/$name.txt"
+      break
+    fi
+  done
+  printf '  recorded %s @ %s\n' "$name" "${sha:-<none>}"
+}
+
+do_list() {
+  printf '\n%-22s %-10s %-12s %s\n' "PLUGIN" "VENDORED" "SYNCED" "PURPOSE"
+  for n in $(names); do
+    p="$(field "$n" path)"
+    [ -d "$ROOT/$p" ] && v="yes" || v="no"
+    d="$(field "$n" last_synced_date)"
+    printf '%-22s %-10s %-12s %s\n' "$n" "$v" "${d:-—}" "$(field "$n" purpose)"
+  done
+  printf '\n'
+}
+
+case "${1:-}" in
+  --add)      [ $# -ge 2 ] || die "usage: --add <name>";  do_add "$2" ;;
+  --pull)     [ $# -ge 2 ] || die "usage: --pull <name>"; do_pull "$2" ;;
+  --pull-all) for n in $(names); do
+                p="$(field "$n" path)"; [ -d "$ROOT/$p" ] && do_pull "$n" || true
+              done ;;
+  --list|"")  do_list ;;
+  *)          die "unknown option: $1" ;;
+esac

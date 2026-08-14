@@ -1,0 +1,16 @@
+/* Slightly wider content column — the option tables need the room. */
+.md-grid { max-width: 68rem; }
+
+/* Keycap styling for ++ctrl+b++ sequences. */
+.md-typeset kbd {
+  font-size: 0.85em;
+  padding: 0.1em 0.4em;
+}
+
+/* Make the "generated page" notices visually distinct from ordinary notes. */
+.md-typeset .admonition.info { border-left-width: 0.3rem; }
+
+/* Card grid on the landing page. */
+.md-typeset .grid.cards > ul > li {
+  border-radius: 0.4rem;
+}

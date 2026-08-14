@@ -1,0 +1,17 @@
+# Your personal overrides — intentionally untracked
+local.conf
+config/themes/custom.conf
+
+# Docs build output
+site/
+.cache/
+__pycache__/
+*.pyc
+
+# Backups made by install.sh
+*.bak-*
+
+# NOTE: vendor/ and plugins/ are deliberately NOT ignored.
+#   vendor/   holds the vendored plugin subtrees — the whole point is that they
+#             ship inside the repository so nothing is downloaded at startup.
+#   plugins/  holds our adapter .conf files, which are project source.

@@ -1,0 +1,239 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  doctor — diagnose the environment and this config
+# ==============================================================================
+#
+#  Usage:  ./scripts/doctor
+#
+#  Prints PASS / WARN / FAIL for each check. WARN means something is degraded
+#  but working; FAIL means something is actually broken.
+#
+#  Every check explains what to do about it. A diagnostic that only says
+#  "FAIL" has told you nothing you did not already know.
+#
+#  Exit status: 0 if no FAIL, 1 otherwise. WARN never fails the run, so this is
+#  safe to use in CI.
+# ==============================================================================
+
+set -u
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FAILED=0
+WARNED=0
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  C_OK=$(printf '\033[32m'); C_WARN=$(printf '\033[33m')
+  C_ERR=$(printf '\033[31m'); C_DIM=$(printf '\033[2m'); C_0=$(printf '\033[0m')
+else
+  C_OK=''; C_WARN=''; C_ERR=''; C_DIM=''; C_0=''
+fi
+
+pass() { printf '  %sPASS%s  %s\n' "$C_OK" "$C_0" "$1"; }
+warn() { printf '  %sWARN%s  %s\n' "$C_WARN" "$C_0" "$1"; WARNED=$((WARNED+1)); shift
+         for l in "$@"; do printf '        %s%s%s\n' "$C_DIM" "$l" "$C_0"; done; }
+fail() { printf '  %sFAIL%s  %s\n' "$C_ERR" "$C_0" "$1"; FAILED=$((FAILED+1)); shift
+         for l in "$@"; do printf '        %s%s%s\n' "$C_DIM" "$l" "$C_0"; done; }
+head_() { printf '\n%s\n' "$1"; }
+
+printf '\ntmux-config doctor\n'
+
+# ------------------------------------------------------------------------------
+head_ "tmux"
+# ------------------------------------------------------------------------------
+if ! command -v tmux >/dev/null 2>&1; then
+  fail "tmux not found on PATH" "Install it, then run this again."
+  printf '\nCannot continue without tmux.\n\n'; exit 1
+fi
+
+TMUX_VER="$(tmux -V | sed 's/[^0-9.]//g')"
+if [ "$(printf '%s\n3.3\n' "$TMUX_VER" | sort -V | head -n1)" = "3.3" ]; then
+  pass "tmux $TMUX_VER (>= 3.3 required)"
+else
+  fail "tmux $TMUX_VER is too old — 3.3 or newer is required" \
+       "See docs/installation.md#older-tmux"
+fi
+
+# ------------------------------------------------------------------------------
+head_ "Terminal"
+# ------------------------------------------------------------------------------
+printf '  %sTERM=%s  COLORTERM=%s%s\n' "$C_DIM" "${TERM:-<unset>}" "${COLORTERM:-<unset>}" "$C_0"
+
+if [ -z "${TERM:-}" ]; then
+  warn "TERM is not set" "tmux will assume a very limited terminal."
+elif infocmp "$TERM" >/dev/null 2>&1; then
+  pass "terminfo entry for \$TERM ($TERM) exists"
+else
+  warn "no terminfo entry for \$TERM ($TERM)" \
+       "Common after SSH into a host that does not know your terminal." \
+       "Fix on the REMOTE host, or export TERM=xterm-256color before connecting."
+fi
+
+if infocmp tmux-256color >/dev/null 2>&1; then
+  pass "tmux-256color terminfo available"
+else
+  warn "tmux-256color terminfo missing — falling back to screen-256color" \
+       "macOS:  brew install ncurses" \
+       "Debian: sudo apt install ncurses-term" \
+       "The config handles this automatically; colours are slightly reduced."
+fi
+
+case "${COLORTERM:-}" in
+  truecolor|24bit) pass "true colour advertised via COLORTERM" ;;
+  *)
+    if printf '%s' "${TERM:-}" | grep -qE '(alacritty|foot|ghostty|kitty|wezterm|contour|rio)'; then
+      pass "true colour inferred from TERM ($TERM)"
+    else
+      warn "no true-colour signal (COLORTERM unset, TERM not a known RGB terminal)" \
+           "Colours will be approximated to 256." \
+           "If your terminal does support RGB, set @cfg_truecolor \"on\"."
+    fi ;;
+esac
+
+# ------------------------------------------------------------------------------
+head_ "Locale"
+# ------------------------------------------------------------------------------
+CHARMAP="$(locale charmap 2>/dev/null || printf 'unknown')"
+if printf '%s' "$CHARMAP" | grep -qi 'utf-*8'; then
+  pass "UTF-8 locale ($CHARMAP)"
+else
+  warn "locale is not UTF-8 (charmap: $CHARMAP)" \
+       "tmux replaces non-ASCII characters with '_'." \
+       "The config detects this and uses ASCII separators automatically," \
+       "so the status bar stays readable — but box-drawing will be plain." \
+       "Fix: export LANG=en_US.UTF-8 (and locale-gen it on minimal images)."
+fi
+
+# ------------------------------------------------------------------------------
+head_ "Clipboard"
+# ------------------------------------------------------------------------------
+if [ -n "${SSH_CONNECTION:-}${SSH_TTY:-}" ]; then
+  printf '  %sSSH session detected — OSC 52 is the path that matters here.%s\n' "$C_DIM" "$C_0"
+fi
+
+CLIP_TOOL=""
+case "$(uname -s)" in
+  Darwin) CLIP_TOOL="pbcopy" ;;
+  Linux)
+    if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
+      CLIP_TOOL="clip.exe"
+    elif [ -n "${WAYLAND_DISPLAY:-}" ]; then CLIP_TOOL="wl-copy"
+    elif [ -n "${DISPLAY:-}" ]; then CLIP_TOOL="xclip"
+    fi ;;
+  CYGWIN*|MINGW*|MSYS*) CLIP_TOOL="cat" ;;
+esac
+
+if [ -z "$CLIP_TOOL" ]; then
+  warn "no local clipboard tool applies (headless or no display server)" \
+       "Copying still works via OSC 52 and tmux's own buffers."
+elif command -v "$CLIP_TOOL" >/dev/null 2>&1; then
+  pass "clipboard helper available ($CLIP_TOOL)"
+else
+  warn "clipboard helper '$CLIP_TOOL' is not installed" \
+       "Wayland: sudo apt install wl-clipboard" \
+       "X11:     sudo apt install xclip" \
+       "OSC 52 still works if your terminal supports it."
+fi
+
+case "${TERM_PROGRAM:-}" in
+  Apple_Terminal)
+    warn "Terminal.app does not support OSC 52" \
+         "Copying over SSH will not reach your local clipboard." \
+         "Use iTerm2, Ghostty, kitty, or WezTerm instead." ;;
+esac
+
+# ------------------------------------------------------------------------------
+head_ "Config"
+# ------------------------------------------------------------------------------
+if [ ! -f "$ROOT/tmux.conf" ]; then
+  fail "tmux.conf not found in $ROOT"
+else
+  pass "tmux.conf found"
+fi
+
+# Load into a throwaway server with the paths rewritten, so this works whether
+# or not the repo is the installed copy.
+T="$(mktemp -d)"
+cp -R "$ROOT/config" "$T/config" 2>/dev/null
+[ -d "$ROOT/capabilities" ] && cp -R "$ROOT/capabilities" "$T/capabilities"
+[ -d "$ROOT/terminals" ] && cp -R "$ROOT/terminals" "$T/terminals"
+[ -d "$ROOT/plugins" ] && cp -R "$ROOT/plugins" "$T/plugins"
+[ -d "$ROOT/scripts" ] && cp -R "$ROOT/scripts" "$T/scripts"
+sed "s|~/.config/tmux|$T|g; s|\$HOME/.config/tmux|$T|g" "$ROOT/tmux.conf" > "$T/tmux.conf"
+for f in "$T"/config/*.conf "$T"/capabilities/*.conf "$T"/terminals/*.conf; do
+  [ -f "$f" ] || continue
+  sed "s|~/.config/tmux|$T|g; s|\$HOME/.config/tmux|$T|g" "$f" > "$f.new" && mv "$f.new" "$f"
+done
+
+SOCK="doctor-$$"
+ERR="$(tmux -f "$T/tmux.conf" -L "$SOCK" new-session -d 2>&1 || true)"
+sleep 1
+
+if [ -n "$ERR" ]; then
+  fail "config produced errors while loading" "$ERR"
+else
+  pass "config loads without errors"
+fi
+
+# An empty stderr proves nothing: modules are sourced with `source-file -q`,
+# which is silent when a file is missing. Check a sentinel that only exists if
+# the whole chain ran.
+SENTINEL="$(tmux -L "$SOCK" show -gv @thm_accent 2>/dev/null || true)"
+case "$SENTINEL" in
+  "#"*) pass "all modules loaded (theme applied: $SENTINEL)" ;;
+  *)    fail "tmux.conf loaded but its modules did not" \
+             "Expected @thm_accent to be a colour, got '${SENTINEL:-<unset>}'." \
+             "Usually means the config is not at the path it expects." \
+             "See docs/architecture.md#paths" ;;
+esac
+
+# ------------------------------------------------------------------------------
+head_ "Detected capabilities"
+# ------------------------------------------------------------------------------
+for c in os display ssh utf8 truecolor colors; do
+  V="$(tmux -L "$SOCK" show -gv "@cap_$c" 2>/dev/null || printf '<unset>')"
+  case "$V" in
+    invalid*|'') V='<unset>' ;;
+  esac
+  printf '  %s%-12s%s %s\n' "$C_DIM" "$c" "$C_0" "$V"
+done
+
+# ------------------------------------------------------------------------------
+head_ "Neovim input safety"
+# ------------------------------------------------------------------------------
+#  The project rule is that the DEFAULT config must not intercept the keys
+#  Neovim relies on. Alt+number is a documented, opt-out exception (see
+#  docs/philosophy.md); Ctrl-based keys are never taken by default.
+ROOT_KEYS="$(tmux -L "$SOCK" list-keys -T root 2>/dev/null || true)"
+UNSAFE=""
+for k in C-h C-j C-k C-l C-w C-v C-o C-i Escape; do
+  if printf '%s' "$ROOT_KEYS" | grep -qE "^bind-key +-T root +$k "; then
+    UNSAFE="$UNSAFE $k"
+  fi
+done
+
+if [ -z "$UNSAFE" ]; then
+  pass "no Neovim-critical key is globally intercepted"
+else
+  warn "globally bound, will not reach Neovim:$UNSAFE" \
+       "Expected only if you enabled @cfg_vim_navigator." \
+       "That plugin routes these keys deliberately; see docs/neovim.md."
+fi
+
+if printf '%s' "$ROOT_KEYS" | grep -qE '^bind-key +-T root +M-[1-9] '; then
+  printf '  %sNote: Alt+1..9 is bound globally (@cfg_alt_window_keys).%s\n' "$C_DIM" "$C_0"
+  printf '  %sDocumented tradeoff — set it to "off" if an app needs those keys.%s\n' "$C_DIM" "$C_0"
+fi
+
+tmux -L "$SOCK" kill-server 2>/dev/null || true
+rm -rf "$T"
+
+# ------------------------------------------------------------------------------
+printf '\n'
+if [ "$FAILED" -gt 0 ]; then
+  printf '%s%d failed%s, %d warnings.\n\n' "$C_ERR" "$FAILED" "$C_0" "$WARNED"
+  exit 1
+elif [ "$WARNED" -gt 0 ]; then
+  printf 'No failures, %s%d warning(s)%s — everything above still works.\n\n' "$C_WARN" "$WARNED" "$C_0"
+else
+  printf '%sEverything checks out.%s\n\n' "$C_OK" "$C_0"
+fi

@@ -1,0 +1,156 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  check — static checks suitable for CI
+# ==============================================================================
+#
+#  Usage:  ./scripts/check
+#
+#  Unlike `doctor`, this makes no judgement about YOUR machine. It checks the
+#  config itself, so it is meaningful on a CI runner:
+#
+#    1. every .conf parses
+#    2. no accidental duplicate binding of the same key in the same table
+#    3. no Neovim-critical key is intercepted globally by default
+#    4. every @cfg_* referenced by a module is actually defined
+#    5. the generated docs are in sync with the config
+#
+#  Exit status: 0 clean, 1 on any failure.
+# ==============================================================================
+
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FAILED=0
+note() { printf '  %s\n' "$1"; }
+ok()   { printf '  ok    %s\n' "$1"; }
+bad()  { printf '  FAIL  %s\n' "$1"; FAILED=$((FAILED+1)); }
+
+printf '\ntmux-config check\n\n'
+
+# ------------------------------------------------------------------------------
+# 1. Syntax — `source-file -n` parses without executing
+# ------------------------------------------------------------------------------
+printf 'Syntax\n'
+SOCK="check-$$"
+tmux -L "$SOCK" new-session -d 2>/dev/null
+SYNTAX_BAD=0
+for f in "$ROOT"/tmux.conf "$ROOT"/config/*.conf "$ROOT"/config/themes/*.conf \
+         "$ROOT"/capabilities/*.conf "$ROOT"/terminals/*.conf; do
+  [ -f "$f" ] || continue
+  OUT="$(tmux -L "$SOCK" source-file -n "$f" 2>&1)"
+  if [ -n "$OUT" ]; then
+    bad "$(basename "$f"): $OUT"; SYNTAX_BAD=1
+  fi
+done
+[ "$SYNTAX_BAD" -eq 0 ] && ok "all .conf files parse"
+
+# ------------------------------------------------------------------------------
+# 2. Load the real config into a throwaway server
+# ------------------------------------------------------------------------------
+T="$(mktemp -d)"
+cp -R "$ROOT/config" "$T/config" 2>/dev/null
+[ -d "$ROOT/capabilities" ] && cp -R "$ROOT/capabilities" "$T/capabilities"
+[ -d "$ROOT/terminals" ] && cp -R "$ROOT/terminals" "$T/terminals"
+[ -d "$ROOT/plugins" ] && cp -R "$ROOT/plugins" "$T/plugins"
+[ -d "$ROOT/scripts" ] && cp -R "$ROOT/scripts" "$T/scripts"
+sed "s|~/.config/tmux|$T|g; s|\$HOME/.config/tmux|$T|g" "$ROOT/tmux.conf" > "$T/tmux.conf"
+for f in "$T"/config/*.conf "$T"/capabilities/*.conf "$T"/terminals/*.conf; do
+  [ -f "$f" ] || continue
+  sed "s|~/.config/tmux|$T|g; s|\$HOME/.config/tmux|$T|g" "$f" > "$f.n" && mv "$f.n" "$f"
+done
+LSOCK="checkload-$$"
+LOADERR="$(tmux -f "$T/tmux.conf" -L "$LSOCK" new-session -d 2>&1 || true)"
+sleep 1
+
+printf '\nLoad\n'
+[ -n "$LOADERR" ] && bad "config errors: $LOADERR" || ok "loads without errors"
+SENT="$(tmux -L "$LSOCK" show -gv @thm_accent 2>/dev/null || true)"
+case "$SENT" in
+  "#"*) ok "all modules applied" ;;
+  *)    bad "modules did not load (sentinel @thm_accent = '${SENT:-unset}')" ;;
+esac
+
+# ------------------------------------------------------------------------------
+# 3. Duplicate bindings within one key table
+# ------------------------------------------------------------------------------
+printf '\nBinding conflicts\n'
+DUPES=""
+for tbl in prefix root copy-mode-vi; do
+  # "bind-key [-r] -T <table> <key> <command>" — the key is the field right
+  # after the table name, and optional flags shift every column, so the
+  # position cannot be hardcoded.
+  D="$(tmux -L "$LSOCK" list-keys -T "$tbl" 2>/dev/null \
+       | awk -v t="$tbl" '{ for (i=1;i<NF;i++) if ($i==t) { print $(i+1); break } }' \
+       | sort | uniq -d)"
+  [ -n "$D" ] && DUPES="$DUPES$tbl: $(printf '%s' "$D" | tr '\n' ' ')\n"
+done
+if [ -n "$DUPES" ]; then
+  bad "the same key is bound more than once in a table"
+  printf '%b' "$DUPES" | sed 's/^/        /'
+else
+  ok "no duplicate bindings"
+fi
+
+# ------------------------------------------------------------------------------
+# 4. Neovim input safety (the project's hard rule)
+# ------------------------------------------------------------------------------
+printf '\nNeovim input safety\n'
+ROOT_KEYS="$(tmux -L "$LSOCK" list-keys -T root 2>/dev/null || true)"
+UNSAFE=""
+for k in C-h C-j C-k C-l C-w C-v C-o C-a C-e C-u C-d Escape; do
+  printf '%s' "$ROOT_KEYS" | grep -qE "^bind-key +-T root +$k " && UNSAFE="$UNSAFE $k"
+done
+if [ -z "$UNSAFE" ]; then
+  ok "no Ctrl-based key is globally intercepted by default"
+else
+  bad "globally intercepted, will not reach Neovim:$UNSAFE"
+  note "Only acceptable when @cfg_vim_navigator is on. See docs/philosophy.md."
+fi
+
+# ------------------------------------------------------------------------------
+# 5. Every @cfg_* used by a module must be defined in 00-options.conf
+# ------------------------------------------------------------------------------
+printf '\nOption definitions\n'
+DEFINED="$(grep -ho '@cfg_[a-z_]*' "$ROOT/config/00-options.conf" | sort -u)"
+# Comment lines are stripped first: the modules document their mechanism with
+# placeholder examples like "#{@cfg_x}", which are not real option uses.
+USED="$(cat "$ROOT"/config/*.conf "$ROOT"/capabilities/*.conf "$ROOT"/terminals/*.conf 2>/dev/null \
+        | sed 's/^[[:space:]]*#.*$//' \
+        | grep -o '@cfg_[a-z_]*' | sort -u)"
+MISSING=""
+for u in $USED; do
+  printf '%s\n' "$DEFINED" | grep -qx "$u" || MISSING="$MISSING $u"
+done
+if [ -z "$MISSING" ]; then
+  ok "every @cfg_* used is defined ($(printf '%s' "$DEFINED" | wc -l | tr -d ' ') options)"
+else
+  bad "used but never defined in 00-options.conf:$MISSING"
+fi
+
+# ------------------------------------------------------------------------------
+# 6. Generated docs in sync
+# ------------------------------------------------------------------------------
+printf '\nGenerated docs\n'
+if [ -x "$ROOT/scripts/gen-options.py" ] && [ -f "$ROOT/docs/reference/options.md" ]; then
+  if "$ROOT/scripts/gen-options.py" 2>/dev/null | diff -q - "$ROOT/docs/reference/options.md" >/dev/null 2>&1; then
+    ok "options reference is up to date"
+  else
+    bad "docs/reference/options.md is stale"
+    note "Regenerate: ./scripts/gen-options.py > docs/reference/options.md"
+  fi
+fi
+if [ -x "$ROOT/scripts/gen-keybindings.sh" ] && [ -f "$ROOT/docs/keybindings.md" ]; then
+  if "$ROOT/scripts/gen-keybindings.sh" 2>/dev/null | diff -q - "$ROOT/docs/keybindings.md" >/dev/null 2>&1; then
+    ok "keybindings page is up to date"
+  else
+    bad "docs/keybindings.md is stale"
+    note "Regenerate: ./scripts/gen-keybindings.sh > docs/keybindings.md"
+  fi
+fi
+
+tmux -L "$SOCK" kill-server 2>/dev/null || true
+tmux -L "$LSOCK" kill-server 2>/dev/null || true
+rm -rf "$T"
+
+printf '\n'
+if [ "$FAILED" -gt 0 ]; then printf '%d check(s) failed.\n\n' "$FAILED"; exit 1; fi
+printf 'All checks passed.\n\n'

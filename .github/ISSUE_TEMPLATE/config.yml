@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://tmux-config.readthedocs.io
+    about: Configuration, keybindings, capabilities, troubleshooting.
+  - name: Troubleshooting guide
+    url: https://tmux-config.readthedocs.io/en/latest/troubleshooting/
+    about: Colours, clipboard, locale, Neovim latency — start here.

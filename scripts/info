@@ -1,0 +1,87 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  info — show what this config resolved to right now
+# ==============================================================================
+#
+#  Usage:  ./scripts/info          inspect the running tmux server
+#          ./scripts/info --fresh  load the repo into a throwaway server first
+#
+#  Where `doctor` judges, `info` only reports. Use it to answer "what did the
+#  config actually decide on this machine" — the first question worth asking
+#  when something behaves differently than the docs say.
+# ==============================================================================
+
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SOCK=""; TMPD=""
+
+if [ "${1:-}" = "--fresh" ] || ! tmux has-session 2>/dev/null; then
+  TMPD="$(mktemp -d)"; SOCK="info-$$"
+  cp -R "$ROOT/config" "$TMPD/config" 2>/dev/null
+  [ -d "$ROOT/capabilities" ] && cp -R "$ROOT/capabilities" "$TMPD/capabilities"
+  [ -d "$ROOT/terminals" ] && cp -R "$ROOT/terminals" "$TMPD/terminals"
+[ -d "$ROOT/plugins" ] && cp -R "$ROOT/plugins" "$TMPD/plugins"
+[ -d "$ROOT/scripts" ] && cp -R "$ROOT/scripts" "$TMPD/scripts"
+  sed "s|~/.config/tmux|$TMPD|g; s|\$HOME/.config/tmux|$TMPD|g" "$ROOT/tmux.conf" > "$TMPD/tmux.conf"
+  for f in "$TMPD"/config/*.conf "$TMPD"/capabilities/*.conf "$TMPD"/terminals/*.conf; do
+    [ -f "$f" ] || continue
+    sed "s|~/.config/tmux|$TMPD|g; s|\$HOME/.config/tmux|$TMPD|g" "$f" > "$f.n" && mv "$f.n" "$f"
+  done
+  tmux -f "$TMPD/tmux.conf" -L "$SOCK" new-session -d 2>/dev/null
+  sleep 1
+  trap 'tmux -L "$SOCK" kill-server 2>/dev/null; rm -rf "$TMPD"' EXIT
+fi
+
+t() { if [ -n "$SOCK" ]; then tmux -L "$SOCK" "$@"; else tmux "$@"; fi; }
+g() { V="$(t show -gv "$1" 2>/dev/null)"; case "$V" in invalid*|'') printf '<unset>' ;; *) printf '%s' "$V" ;; esac; }
+row() { printf '  %-22s %s\n' "$1" "$2"; }
+sec() { printf '\n%s\n' "$1"; }
+
+printf '\ntmux-config info\n'
+
+sec "Versions"
+row "tmux"            "$(tmux -V | sed 's/tmux //')"
+row "config location" "$ROOT"
+
+sec "Platform"
+row "OS"          "$(g @cap_os)"
+row "uname"       "$(uname -sr)"
+row "display"     "$(g @cap_display)"
+row "remote/SSH"  "$(g @cap_ssh)"
+
+sec "Terminal"
+row "TERM"          "${TERM:-<unset>}"
+row "COLORTERM"     "${COLORTERM:-<unset>}"
+row "default-terminal" "$(g default-terminal)"
+row "colour depth"  "$(g @cap_colors)"
+row "truecolor"     "$(g @cap_truecolor) (policy: $(g @cfg_truecolor))"
+row "UTF-8"         "$(g @cap_utf8) (policy: $(g @cfg_symbols))"
+row "extended keys" "$(t show -sv extended-keys 2>/dev/null || printf '<unset>')"
+
+sec "Clipboard"
+row "copy-command"  "$(g copy-command)"
+row "set-clipboard" "$(g set-clipboard)"
+row "OSC 52 policy" "$(g @cfg_osc52)"
+
+sec "Behaviour"
+row "prefix"       "$(g prefix)"
+row "mouse"        "$(g mouse)"
+row "mode-keys"    "$(t show -gwv mode-keys 2>/dev/null)"
+row "escape-time"  "$(t show -sv escape-time 2>/dev/null)"
+row "history"      "$(g history-limit)"
+row "theme"        "$(g @cfg_theme)  accent $(g @thm_accent)"
+row "status style" "$(g @cfg_status_style) @ $(g status-interval)s"
+
+sec "Plugins"
+row "plugin system" "$(g @cfg_plugins)"
+for p in resurrect continuum; do
+  row "  $p" "$(g "@cfg_plugin_$p")"
+done
+row "  vim navigator" "$(g @cfg_vim_navigator)"
+
+sec "Key bindings"
+row "prefix table"  "$(t list-keys -T prefix 2>/dev/null | wc -l | tr -d ' ') bound"
+row "root (global)" "$(t list-keys -T root 2>/dev/null | wc -l | tr -d ' ') bound"
+row "copy-mode-vi"  "$(t list-keys -T copy-mode-vi 2>/dev/null | wc -l | tr -d ' ') bound"
+
+printf '\n'

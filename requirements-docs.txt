@@ -1,0 +1,11 @@
+# Documentation build dependencies.
+#
+#   pip install -r requirements-docs.txt
+#   mkdocs serve          # live preview on http://127.0.0.1:8000
+#   mkdocs build --strict # what Read the Docs runs
+#
+# Pinned to minor versions: Material occasionally changes template internals,
+# and an unpinned docs build that breaks on an unrelated commit is a bad time.
+mkdocs==1.6.*
+mkdocs-material==9.5.*
+pymdown-extensions==10.*

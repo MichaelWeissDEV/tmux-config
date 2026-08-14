@@ -1,0 +1,144 @@
+# ==============================================================================
+#  plugins.toml — what is vendored, from where, at which revision
+# ==============================================================================
+#
+#  Every plugin lives IN this repository under vendor/, added with
+#  `git subtree`. There is no TPM and no download at tmux startup: once the
+#  repo is cloned, the config works offline and reproducibly.
+#
+#  This manifest answers the question a lockfile answers: "which plugin
+#  version shipped in release X?" Update it whenever you run
+#  `scripts/update-vendor`, and commit the change together with the subtree.
+#
+#  `enabled_by_default` is false for every entry, on purpose. Vendoring a
+#  plugin makes it AVAILABLE; the user still opts in via @cfg_plugin_*.
+# ==============================================================================
+
+[meta]
+# Bump when the vendoring layout changes in a way tooling must know about.
+manifest_version = 1
+
+# ------------------------------------------------------------------------------
+
+[tmux-resurrect]
+path               = "vendor/tmux-resurrect"
+upstream           = "https://github.com/tmux-plugins/tmux-resurrect"
+branch             = "master"
+entrypoint         = "resurrect.tmux"
+option             = "@cfg_plugin_resurrect"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Save and restore sessions, windows, panes and layouts."
+last_synced_commit = ""   # filled in by scripts/update-vendor
+last_synced_date   = ""
+
+[tmux-continuum]
+path               = "vendor/tmux-continuum"
+upstream           = "https://github.com/tmux-plugins/tmux-continuum"
+branch             = "master"
+entrypoint         = "continuum.tmux"
+option             = "@cfg_plugin_continuum"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Periodic automatic save, and restore on server start."
+requires           = ["tmux-resurrect"]
+last_synced_commit = ""
+last_synced_date   = ""
+
+[vim-tmux-navigator]
+path               = "vendor/vim-tmux-navigator"
+upstream           = "https://github.com/christoomey/vim-tmux-navigator"
+branch             = "master"
+entrypoint         = "vim-tmux-navigator.tmux"
+option             = "@cfg_plugin_navigator"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Move between Neovim splits and tmux panes with one keyset."
+# Routes Ctrl-hjkl globally. That is the single biggest deviation from the
+# project's input-safety rule, which is why it must stay opt-in.
+intercepts_input   = true
+last_synced_commit = ""
+last_synced_date   = ""
+
+[tmux-open]
+path               = "vendor/tmux-open"
+upstream           = "https://github.com/tmux-plugins/tmux-open"
+branch             = "master"
+entrypoint         = "open.tmux"
+option             = "@cfg_plugin_open"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Open a highlighted file or URL from copy mode."
+last_synced_commit = ""
+last_synced_date   = ""
+
+[tmux-sessionist]
+path               = "vendor/tmux-sessionist"
+upstream           = "https://github.com/tmux-plugins/tmux-sessionist"
+branch             = "master"
+entrypoint         = "sessionist.tmux"
+option             = "@cfg_plugin_sessionist"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Extra session management without leaving the current one."
+last_synced_commit = ""
+last_synced_date   = ""
+
+[tmux-logging]
+path               = "vendor/tmux-logging"
+upstream           = "https://github.com/tmux-plugins/tmux-logging"
+branch             = "master"
+entrypoint         = "logging.tmux"
+option             = "@cfg_plugin_logging"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Log pane output to a file, screen-capture, save history."
+last_synced_commit = ""
+last_synced_date   = ""
+
+[extrakto]
+path               = "vendor/extrakto"
+upstream           = "https://github.com/laktak/extrakto"
+branch             = "master"
+entrypoint         = "extrakto.tmux"
+option             = "@cfg_plugin_extrakto"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Fuzzy-find and copy any text visible on screen."
+# Needs fzf on PATH. The adapter checks and reports rather than failing quietly.
+requires_binary    = "fzf"
+last_synced_commit = ""
+last_synced_date   = ""
+
+[tmux-fpp]
+path               = "vendor/tmux-fpp"
+upstream           = "https://github.com/tmux-plugins/tmux-fpp"
+branch             = "master"
+entrypoint         = "fpp.tmux"
+option             = "@cfg_plugin_fpp"
+enabled_by_default = false
+license            = "MIT"
+purpose            = "Pick a file path out of pane output and open it."
+requires_binary    = "fpp"
+last_synced_commit = ""
+last_synced_date   = ""
+
+# ------------------------------------------------------------------------------
+#  Deliberately NOT vendored
+# ------------------------------------------------------------------------------
+#  Recorded here so the decision is not re-litigated every few months.
+#
+#  tmux-sensible  — sets the same options this config sets explicitly.
+#                   Two sources of truth for one setting, invisibly fighting.
+#  tmux-yank      — capabilities/ + 40-clipboard.conf already cover every
+#                   platform natively, with no dependency.
+#  tmux-copycat   — tmux 3.1 gained native regex search; upstream says so
+#                   itself. Native beats plugin.
+#  theme plugins  — a theme here is ten variables in a file.
+#  tmux-battery,  — the project explicitly avoids system-monitor widgets in the
+#  tmux-cpu,        status bar. Each one is a `#(shell)` running on every
+#  tmux-weather,    refresh, for every attached client, forever. If you want
+#  tmux-spotify     one anyway, local.conf.example shows how — with the cost
+#                   stated next to it.
+#  tmux-prefix-     — the status bar already turns red while the prefix is
+#  highlight          armed, using a format and no subprocess.

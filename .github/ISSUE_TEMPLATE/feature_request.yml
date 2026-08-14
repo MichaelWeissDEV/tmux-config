@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest an addition
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please skim [Philosophy](../blob/main/docs/philosophy.md) first. A few
+        rules there are enforced by CI, so a proposal that breaks one needs to
+        argue for changing the rule as well.
+
+        In particular: native tmux is preferred over a plugin, defaults stay
+        minimal, and nothing may intercept application input by default.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: The situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Which tier does this belong to
+      options:
+        - Core (always active, tmux only)
+        - Capability (detected, changes how something degrades)
+        - Optional feature (opt-in via an option)
+        - Plugin (vendored, off by default)
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: native
+    attributes:
+      label: Native first
+      options:
+        - label: I checked whether current tmux can already do this without a plugin
+          required: true

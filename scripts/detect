@@ -1,0 +1,157 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  detect — probe the environment once, emit the @cap_* facts
+# ==============================================================================
+#
+#  Called from capabilities/detect.conf via a single `run-shell`. It sets every
+#  @cap_* option itself by calling `tmux set`.
+#
+#  WHY THIS IS A SCRIPT AND NOT A CHAIN OF if-shell
+#  -----------------------------------------------
+#  The obvious tmux-native form is one `if-shell` per fact. That is readable,
+#  but each one forks a shell, and fifteen of them cost ~90 ms of startup.
+#  Doing the whole probe in ONE shell brings that back to a single fork.
+#
+#  Measured on this machine: 15 probes ≈ 120 ms server start, 1 probe ≈ 35 ms.
+#
+#  It must stay POSIX sh — no bashisms — because it runs on macOS, BSD, Alpine
+#  (busybox) and WSL alike.
+# ==============================================================================
+
+set -u
+TMUX_BIN="${1:-tmux}"
+
+# Collect every fact, then hand the whole lot to tmux at once. Calling
+# `tmux set` per option would just move the cost from forking shells to
+# forking tmux.
+#
+# The commands are written to a file and sourced, rather than passed as
+# arguments. Two earlier attempts failed in ways worth recording, because both
+# fail SILENTLY:
+#
+#   1. Unquoted expansion of a built-up string: the shell does not re-parse
+#      quotes that arrive via a variable, so values reached tmux with literal
+#      apostrophes and `copy-command` became the uncallable "'pbcopy'".
+#   2. Adding `eval` to fix that: the shell then consumed the `;` separators
+#      as its own command terminators, so only the FIRST option was ever set.
+#
+# A sourced file has neither problem. Values are single-quoted with embedded
+# single quotes escaped, so content from $TERM is inert.
+CMDS="$(mktemp)"
+trap 'rm -f "$CMDS"' EXIT INT TERM
+
+add() {
+  # '\'' is the POSIX idiom for a literal single quote inside single quotes.
+  _v="$(printf '%s' "$2" | sed "s/'/'\\\\''/g")"
+  printf "set -g %s '%s'\n" "$1" "$_v" >> "$CMDS"
+}
+
+# ------------------------------------------------------------------------------
+#  Operating system
+# ------------------------------------------------------------------------------
+UNAME="$(uname -s 2>/dev/null || printf unknown)"
+OS="unknown"
+case "$UNAME" in
+  Darwin) OS="macos" ;;
+  Linux)
+    # WSL first: it reports "Linux" and may even have xclip installed, but the
+    # clipboard the user actually sees belongs to Windows.
+    if [ -n "${WSL_DISTRO_NAME:-}" ] || grep -qi microsoft /proc/version 2>/dev/null
+    then OS="wsl"; else OS="linux"; fi ;;
+  *BSD|DragonFly)       OS="bsd" ;;
+  SunOS)                OS="solaris" ;;
+  CYGWIN*|MINGW*|MSYS*) OS="cygwin" ;;
+esac
+add @cap_os "$OS"
+
+# ------------------------------------------------------------------------------
+#  Display server — decides the clipboard tool on Linux/BSD
+# ------------------------------------------------------------------------------
+DISPLAY_SRV="none"
+if [ "$OS" != "wsl" ]; then
+  if   [ -n "${WAYLAND_DISPLAY:-}" ]; then DISPLAY_SRV="wayland"
+  elif [ -n "${DISPLAY:-}" ];         then DISPLAY_SRV="x11"
+  fi
+fi
+add @cap_display "$DISPLAY_SRV"
+
+# ------------------------------------------------------------------------------
+#  SSH
+# ------------------------------------------------------------------------------
+if [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_CLIENT:-}" ] || [ -n "${SSH_TTY:-}" ]
+then add @cap_ssh "yes"; else add @cap_ssh "no"; fi
+
+# ------------------------------------------------------------------------------
+#  UTF-8
+# ------------------------------------------------------------------------------
+#  `locale charmap` reports the charmap actually in effect, which is more
+#  reliable than reading LANG. Falls back to the variables where `locale` is
+#  absent (busybox, minimal containers).
+UTF8="no"
+if command -v locale >/dev/null 2>&1; then
+  case "$(locale charmap 2>/dev/null)" in
+    [Uu][Tt][Ff]*8|*UTF-8*|*utf8*) UTF8="yes" ;;
+  esac
+fi
+if [ "$UTF8" = "no" ]; then
+  case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+    *[Uu][Tt][Ff]*8*) UTF8="yes" ;;
+  esac
+fi
+add @cap_utf8 "$UTF8"
+
+# ------------------------------------------------------------------------------
+#  Colour depth
+# ------------------------------------------------------------------------------
+TRUECOLOR="no"
+COLORS="256"
+
+# COLORTERM is the honest, terminal-set signal — checked before any name match.
+case "${COLORTERM:-}" in
+  truecolor|24bit) TRUECOLOR="yes"; COLORS="16m" ;;
+esac
+
+# Terminals that do RGB but do not always export COLORTERM.
+if [ "$TRUECOLOR" = "no" ]; then
+  case "${TERM:-}" in
+    *alacritty*|*foot*|*ghostty*|*kitty*|*wezterm*|*contour*|*rio*)
+      TRUECOLOR="yes"; COLORS="16m" ;;
+  esac
+fi
+
+# Low-colour terminals: painting a 256-colour theme onto these is unreadable.
+case "${TERM:-}" in
+  linux|vt[0-9]*|ansi) TRUECOLOR="no"; COLORS="16" ;;
+  dumb|"")             TRUECOLOR="no"; COLORS="8"  ;;
+esac
+
+add @cap_truecolor "$TRUECOLOR"
+add @cap_colors    "$COLORS"
+add @cap_term      "${TERM:-unknown}"
+
+# ------------------------------------------------------------------------------
+#  Terminfo — checked here so capabilities/terminal.conf needs no fork of its own
+# ------------------------------------------------------------------------------
+if command -v infocmp >/dev/null 2>&1 && infocmp tmux-256color >/dev/null 2>&1
+then add @cap_terminfo_tmux "yes"; else add @cap_terminfo_tmux "no"; fi
+
+# ------------------------------------------------------------------------------
+#  Clipboard helper — presence, not choice; 40-clipboard.conf decides
+# ------------------------------------------------------------------------------
+have() { command -v "$1" >/dev/null 2>&1; }
+CLIP="none"
+case "$OS" in
+  wsl)    have clip.exe && CLIP="clip.exe" ;;
+  macos)  have pbcopy   && CLIP="pbcopy" ;;
+  cygwin) CLIP="cat > /dev/clipboard" ;;
+  *)      case "$DISPLAY_SRV" in
+            wayland) have wl-copy && CLIP="wl-copy" ;;
+            x11)     if   have xclip; then CLIP="xclip -selection clipboard -in"
+                     elif have xsel;  then CLIP="xsel --clipboard --input"
+                     fi ;;
+          esac ;;
+esac
+add @cap_clipboard_tool "$CLIP"
+
+# One tmux call for the lot.
+"$TMUX_BIN" source-file "$CMDS"
