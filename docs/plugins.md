@@ -57,7 +57,7 @@ doing nothing silently.
 | tmux-continuum | `@cfg_plugin_continuum` | Automatic save + restore on start |
 | vim-tmux-navigator | `@cfg_plugin_navigator` | Shared Neovim/tmux pane navigation |
 | tmux-open | `@cfg_plugin_open` | Open a file or URL from copy mode |
-| tmux-sessionist | `@cfg_plugin_sessionist` | Extra session management |
+| tmux-sessionist | `@cfg_plugin_sessionist` | Extra session management — **see the conflicts below** |
 
 ### tmux-resurrect
 
@@ -152,6 +152,64 @@ defined.
 
 ---
 
+## Binding conflicts
+
+A plugin can silently rebind a key this config already uses. The failure mode is
+a key that quietly does something else after you enable a plugin, which is
+unpleasant to debug.
+
+!!! warning "`scripts/check` cannot catch these"
+    It runs with the shipped defaults, where every plugin is off. Conflict
+    detection lives in `./tests/run`, which enables each vendored plugin and
+    diffs the prefix key table against the baseline.
+
+    ```bash
+    ./tests/run     # see the "Plugin binding overrides" section
+    ```
+
+The overrides in the currently vendored snapshot:
+
+### tmux-sessionist — five overrides
+
+| Key | This config | tmux-sessionist |
+| --- | --- | --- |
+| <kbd>S</kbd> | `choose-tree -Zs` (session chooser) | `switch-client -l` |
+| <kbd>g</kbd> | floating scratch terminal | goto-session prompt |
+| <kbd>@</kbd> | join a pane from another window | promote pane to a session |
+| <kbd>C</kbd> | tmux default `customize-mode` | new-session prompt |
+| <kbd>t</kbd> | tmux default `clock-mode` | join pane |
+
+Losing <kbd>prefix</kbd> <kbd>g</kbd> and <kbd>prefix</kbd> <kbd>S</kbd> is the
+part most people notice. Restore them in `local.conf`, which loads after the
+plugins:
+
+```tmux title="local.conf"
+bind -N "Choose a session from a list" S choose-tree -Zs
+bind -N "Toggle a floating scratch terminal" g \
+  display-popup -E -w 80% -h 75% -d "#{pane_current_path}"
+```
+
+### vim-tmux-navigator — one override
+
+| Key | This config | vim-tmux-navigator |
+| --- | --- | --- |
+| <kbd>Ctrl</kbd>+<kbd>l</kbd> | `next-window` (with prefix) | passes the key through to Neovim |
+
+That is the intended trade — the plugin exists to route Ctrl-hjkl. Window
+switching remains on <kbd>prefix</kbd> <kbd>Ctrl</kbd>+<kbd>h</kbd> for the
+previous window, <kbd>Alt</kbd>+number, and <kbd>prefix</kbd> <kbd>n</kbd> /
+<kbd>p</kbd>.
+
+It is also the only shipped plugin that intercepts application input globally,
+which is why it is off by default — see [Neovim](neovim.md) and
+[Philosophy](philosophy.md#the-second-exception-vim-tmux-navigator).
+
+### The others
+
+`tmux-resurrect`, `tmux-continuum` and `tmux-open` add no conflicting binding.
+
+---
+
 ## Deliberately not included
 
 | Plugin | Why not |
@@ -173,9 +231,7 @@ re-litigated every few months.
     look for the startup message.
 
 **Plugin binds a key this config already uses**
-:   `./scripts/check` reports duplicate bindings per key table. `tmux-sessionist`
-    binds <kbd>prefix</kbd> <kbd>S</kbd>, which this config uses for
-    `choose-tree`.
+:   See [Binding conflicts](#binding-conflicts) — this is measured, not guessed.
 
 **tmux got slow**
 :   Check whether the plugin adds a `#()` to the status bar — see

@@ -173,6 +173,65 @@ for th in catppuccin-mocha catppuccin-latte tokyonight nord gruvbox-dark rose-pi
 done
 
 # ------------------------------------------------------------------------------
+printf '\nPlugin binding overrides (informational)\n'
+# ------------------------------------------------------------------------------
+#  `scripts/check` cannot see these: it runs with the shipped defaults, where
+#  every plugin is off. But a plugin binding a key this config already uses is
+#  exactly the kind of surprise worth surfacing — the failure mode is a key
+#  that quietly does something else after you enable a plugin.
+#
+#  This is reported, not asserted. A plugin overriding a key is upstream
+#  behaviour, not a defect in this project; the point is that it is written
+#  down rather than discovered mid-workflow.
+
+build
+start pb0 TERM=xterm-256color LANG=en_US.UTF-8
+tmux -L pb0 list-keys -T prefix 2>/dev/null \
+  | awk '{for(i=1;i<NF;i++) if($i=="prefix"){k=$(i+1);$1="";$2="";$3="";$4="";sub(/^ +/,"");print k"\t"$0;exit}}' >/dev/null
+tmux -L pb0 list-keys -T prefix 2>/dev/null \
+  | awk '{for(i=1;i<NF;i++) if($i=="prefix"){k=$(i+1);$1="";$2="";$3="";$4="";sub(/^ +/,"");print k"\t"$0;break}}' \
+  | sort > "$STAGE/keys.base"
+stop pb0
+
+for pl in resurrect continuum navigator open sessionist logging extrakto fpp; do
+  case "$pl" in
+    resurrect) dir=tmux-resurrect ;;      continuum) dir=tmux-continuum ;;
+    navigator) dir=vim-tmux-navigator ;;  open) dir=tmux-open ;;
+    sessionist) dir=tmux-sessionist ;;    logging) dir=tmux-logging ;;
+    extrakto) dir=extrakto ;;             fpp) dir=tmux-fpp ;;
+  esac
+  [ -d "$ROOT/vendor/$dir" ] || continue
+
+  build
+  cp -R "$ROOT/vendor" "$STAGE/cfg/vendor"
+  for f in "$STAGE"/cfg/plugins/*.conf; do
+    sed "s|\$HOME/.config/tmux|$STAGE/cfg|g" "$f" > "$f.n" && mv "$f.n" "$f"
+  done
+  opt @cfg_plugins on
+  opt "@cfg_plugin_$pl" on
+  start "pb-$pl" TERM=xterm-256color LANG=en_US.UTF-8
+  sleep 1.2
+  tmux -L "pb-$pl" list-keys -T prefix 2>/dev/null \
+    | awk '{for(i=1;i<NF;i++) if($i=="prefix"){k=$(i+1);$1="";$2="";$3="";$4="";sub(/^ +/,"");print k"\t"$0;break}}' \
+    | sort > "$STAGE/keys.$pl"
+
+  # A key present in both, bound to something different, is an override.
+  OVER="$(join -t"$(printf '\t')" "$STAGE/keys.base" "$STAGE/keys.$pl" 2>/dev/null \
+          | awk -F"\t" '$2 != $3 {
+              # Collapse the staged vendor path so the report stays readable.
+              a=$2; b=$3
+              gsub(/[^ ]*\/vendor\//, "", b); gsub(/[^ ]*\/vendor\//, "", a)
+              printf "        %-4s %s  ->  %s\n", $1":", a, b
+            }')"
+  if [ -n "$OVER" ]; then
+    printf '  note  %s overrides:\n%s\n' "$pl" "$OVER"
+  else
+    printf '  ok    %s adds no conflicting binding\n' "$pl"
+  fi
+  stop "pb-$pl"
+done
+
+# ------------------------------------------------------------------------------
 printf '\n%d passed, %d failed\n\n' "$PASS" "$FAIL"
 [ "$FAIL" -gt 0 ] && exit 1
 exit 0
