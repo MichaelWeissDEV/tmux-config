@@ -57,8 +57,8 @@ purpose            = "Move between Neovim splits and tmux panes with one keyset.
 # Routes Ctrl-hjkl globally. That is the single biggest deviation from the
 # project's input-safety rule, which is why it must stay opt-in.
 intercepts_input   = true
-last_synced_commit = ""
-last_synced_date   = ""
+last_synced_commit = "c7400683eae55e6d2f0a24079d354d9050f109c8"
+last_synced_date   = "2026-08-15"
 
 [tmux-open]
 path               = "vendor/tmux-open"
