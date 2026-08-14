@@ -27,6 +27,20 @@ die() { printf 'error: %s\n' "$1" >&2; exit 1; }
 [ -f "$MANIFEST" ] || die "manifest not found: $MANIFEST"
 # Only the subtree operations need git. `--list` just reads the manifest, and
 # must keep working in a plain unpacked copy.
+# `git subtree` refuses to operate on a dirty working tree, and its own error
+# does not say what to do about it.
+require_clean_tree() {
+  git -C "$ROOT" diff --quiet 2>/dev/null && git -C "$ROOT" diff --cached --quiet 2>/dev/null && return 0
+  die "working tree has uncommitted changes.
+
+  git subtree cannot run until they are committed or stashed:
+
+      git -C $ROOT status --short
+      git -C $ROOT stash
+
+  Then run this again."
+}
+
 require_git() {
   command -v git >/dev/null 2>&1 || die "git is required for this operation"
   git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die \
@@ -58,6 +72,7 @@ do_add() {
   path="$(field "$name" path)";  up="$(field "$name" upstream)";  br="$(field "$name" branch)"
   [ -n "$path" ] || die "unknown plugin: $name (see --list)"
   [ -d "$ROOT/$path" ] && die "$path already exists — use --pull instead"
+  require_clean_tree
   require_git
   printf 'Adding %s from %s (%s)\n' "$name" "$up" "$br"
   git -C "$ROOT" subtree add --prefix "$path" "$up" "$br" --squash
@@ -98,6 +113,19 @@ record() {
       break
     fi
   done
+  # Commit the manifest and licence together with the subtree that was just
+  # added. Two reasons, and the second one is not optional:
+  #
+  #   1. A release must be traceable to exact plugin versions, so the recorded
+  #      revision belongs in the same history as the code it describes.
+  #   2. `git subtree add` REFUSES to run on a dirty working tree. Leaving the
+  #      manifest edit uncommitted breaks the very next --add with
+  #      "fatal: working tree has modifications. Cannot add."
+  git -C "$ROOT" add vendor-manifest >/dev/null 2>&1 || true
+  if ! git -C "$ROOT" diff --cached --quiet 2>/dev/null; then
+    git -C "$ROOT" commit -q -m "Record $name @ ${sha:-unknown} in vendor manifest"
+  fi
+
   printf '  recorded %s @ %s\n' "$name" "${sha:-<none>}"
 }
 
