@@ -81,8 +81,8 @@ option             = "@cfg_plugin_sessionist"
 enabled_by_default = false
 license            = "MIT"
 purpose            = "Extra session management without leaving the current one."
-last_synced_commit = ""
-last_synced_date   = ""
+last_synced_commit = "3b4c95afd66efca8b86a72b01a4c82081877cf39"
+last_synced_date   = "2026-08-15"
 
 [tmux-logging]
 path               = "vendor/tmux-logging"
