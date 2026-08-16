@@ -57,7 +57,7 @@ Features and the version that introduced them:
 | `allow-passthrough` | 3.3 | OSC 52 from programs inside panes |
 
 The version gate runs once and prints a clear message rather than failing
-obscurely. See [Installation → Older tmux](installation.md#older-tmux).
+obscurely. See [Installation → Older tmux](../getting-started/installation.md#older-tmux).
 
 ---
 
@@ -137,7 +137,7 @@ and busybox as well as bash.
 
 | Editor | Status | Notes |
 | --- | :---: | --- |
-| Neovim | :material-check: | A hard requirement — see [Neovim](neovim.md); CI enforces input safety |
+| Neovim | :material-check: | A hard requirement — see [Neovim](../integration/neovim.md); CI enforces input safety |
 | Vim | :material-check: | Same guarantees |
 | Helix, Emacs, micro | :material-check-outline: | No Ctrl key is taken globally, so nothing is intercepted |
 

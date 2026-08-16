@@ -36,7 +36,7 @@ every one of them was verified against tmux 3.7 rather than assumed.
 ├── scripts/
 │   ├── info · doctor · check
 │   ├── update-vendor
-│   └── gen-keybindings.sh · gen-options.py
+│   └── gen-upstream-keys · gen-keys · gen-docs · gen-options.py
 └── tests/run
 ```
 
@@ -235,12 +235,12 @@ Three decisions carry essentially all of it:
    exactly twice: the version gate, and `scripts/detect`, which probes the
    whole environment in one shell and applies the result with a single sourced
    command file. Everything downstream reads the resulting `@cap_*` values with
-   `%if`. See [Capabilities → Cost](capabilities.md#cost).
+   `%if`. See [Capabilities → Cost](reference/capabilities.md#cost).
 
 2. **No `#(shell)` in the status bar.** A `#()` forks a process every
    `status-interval`, for every attached client. This is the usual cause of a
    tmux that feels heavy. See
-   [Status bar performance](configuration.md#status-bar-performance).
+   [Status bar performance](configuration/index.md#status-bar-performance).
 
 3. **Plugins are off.** Nothing in the config depends on one, so the default
    install has no runtime dependencies that can break or slow startup.
@@ -264,7 +264,7 @@ time tmux -f ~/.config/tmux/tmux.conf -L bench new-session -d \; kill-server
 6. Regenerate the docs and verify a clean load:
 
 ```bash
-./scripts/gen-keybindings.sh > docs/keybindings.md
+./scripts/gen-keys && ./scripts/gen-docs
 tmux -f ~/.config/tmux/tmux.conf -L check new-session -d && tmux -L check kill-server
 ```
 
@@ -276,7 +276,7 @@ A clean load prints nothing. Any output is an error worth fixing.
 
 The config hardcodes `~/.config/tmux`, so to test a working tree that is not
 installed there, rewrite the paths into a temporary copy — which is exactly
-what `scripts/gen-keybindings.sh` does:
+what `scripts/gen-keys` and `scripts/gen-docs` do:
 
 ```bash
 T=$(mktemp -d)

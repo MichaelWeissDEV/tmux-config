@@ -11,7 +11,7 @@
 - [ ] `./scripts/check` passes
 - [ ] `./tests/run` passes
 - [ ] Generated docs regenerated if bindings or options changed
-      (`./scripts/gen-keybindings.sh` and `./scripts/gen-options.py`)
+      (`./scripts/gen-keys`, `./scripts/gen-docs` and `./scripts/gen-options.py`)
 - [ ] `CHANGELOG.md` updated under `[Unreleased]`
 - [ ] New options are documented in `config/00-options.conf` with their
       accepted values and the reason for the default

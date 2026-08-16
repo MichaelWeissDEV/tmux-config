@@ -48,7 +48,7 @@ which cannot collide with anything running inside a pane.
 !!! note "The Alt+number exception"
     <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> *is* bound globally by default.
     It does not affect Neovim's normal keymaps, but it is still interception —
-    see [Philosophy](philosophy.md#the-one-exception-to-rule-2). Turn it off
+    see [Philosophy](../philosophy.md#the-one-exception-to-rule-3). Turn it off
     with `@cfg_alt_window_keys "off"`.
 
 ---
@@ -85,7 +85,7 @@ Plus the Neovim half:
     It is off by default for exactly this reason. Enable it only if you want
     that tradeoff.
 
-The plugin must be vendored first — see [Plugins](plugins.md).
+The plugin must be vendored first — see [Plugins](../plugins/available.md).
 
 ---
 
@@ -112,7 +112,7 @@ feature. On `auto`, tmux enables it only for terminals that advertise support.
     a config reload is not enough.
 
 **Colours differ inside tmux**
-:   See [Troubleshooting → Colours](troubleshooting.md#colours-are-wrong-or-washed-out).
+:   See [Troubleshooting → Colours](../reference/troubleshooting.md#colours-are-wrong-or-washed-out).
 
 **Undercurls do not render**
 :   Your terminal may not support them. Check `tmux info | grep usstyle`.

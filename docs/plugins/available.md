@@ -37,7 +37,7 @@ set -g @cfg_plugins           "on"    # master switch
 set -g @cfg_plugin_resurrect  "on"
 ```
 
-Reload with <kbd>prefix</kbd> <kbd>r</kbd>. No install step, no
+Reload with <kbd>prefix</kbd> <kbd>R</kbd>. No install step, no
 <kbd>prefix</kbd> <kbd>I</kbd>.
 
 If a plugin is enabled but not vendored, tmux says so on startup rather than
@@ -89,7 +89,7 @@ exactly the hidden behaviour this project avoids.
 
 ### vim-tmux-navigator
 
-See [Neovim](neovim.md). This is the one plugin that intercepts application
+See [Neovim](../integration/neovim.md). This is the one plugin that intercepts application
 input, and `scripts/check` reports it as such when enabled — correctly.
 
 ---
@@ -201,8 +201,8 @@ previous window, <kbd>Alt</kbd>+number, and <kbd>prefix</kbd> <kbd>n</kbd> /
 <kbd>p</kbd>.
 
 It is also the only shipped plugin that intercepts application input globally,
-which is why it is off by default — see [Neovim](neovim.md) and
-[Philosophy](philosophy.md#the-second-exception-vim-tmux-navigator).
+which is why it is off by default — see [Neovim](../integration/neovim.md) and
+[Philosophy](../philosophy.md#the-second-exception-vim-tmux-navigator).
 
 ### The others
 
@@ -235,7 +235,7 @@ re-litigated every few months.
 
 **tmux got slow**
 :   Check whether the plugin adds a `#()` to the status bar — see
-    [status bar performance](configuration.md#status-bar-performance).
+    [status bar performance](../configuration/index.md#status-bar-performance).
 
     ```bash
     time tmux -f ~/.config/tmux/tmux.conf -L bench new-session -d \; kill-server

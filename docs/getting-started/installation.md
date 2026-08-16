@@ -18,7 +18,7 @@ environment, and this config supports all of the usual ones.
 | **Native Windows** | :material-close: | — | **Not possible.** tmux has no native Windows port. |
 | **Headless / SSH / Docker** | :material-check: | OSC 52 only | No local clipboard tool needed |
 
-Detection is automatic — see [how it works](configuration.md#copy-mode-clipboard).
+Detection is automatic — see [how it works](../configuration/index.md#copy-mode-clipboard).
 The detected platform is shown in the status bar if you set
 `@cfg_status_style` to `detailed`.
 
@@ -115,7 +115,7 @@ The installer:
 | --- | --- |
 | *(none)* | Symlink the repo to `~/.config/tmux`. Recommended — edits to the repo take effect immediately. |
 | `--copy` | Copy the files instead of symlinking. Use when the repo lives on a volume that will not always be mounted. |
-| `--with-tpm` | Also clone the plugin manager. See [Plugins](plugins.md). |
+| `--with-tpm` | Also clone the plugin manager. See [Plugins](../plugins/available.md). |
 | `--dry-run` | Print every action without doing any of it. |
 | `--uninstall` | Restore the most recent backup. |
 
@@ -142,7 +142,7 @@ echo 'source-file ~/.config/tmux/tmux.conf' > ~/.tmux.conf
     ```
 
     `install.sh` handles a non-default `XDG_CONFIG_HOME` automatically by
-    rewriting the paths. See [Architecture → Paths](architecture.md#paths).
+    rewriting the paths. See [Architecture → Paths](../architecture.md#paths).
 
 ---
 
@@ -166,7 +166,7 @@ Try these:
 | ++ctrl+b++ then ++r++ | Reload the config after an edit |
 | ++ctrl+b++ then ++d++ | Detach (`tmux attach` to come back) |
 
-The full list is on the [Keybindings](keybindings.md) page.
+The full list is on the [Keybindings](../keybindings/quick.md) page.
 
 ---
 
@@ -187,7 +187,7 @@ resolving it is normally a one-line merge.
 !!! tip "Avoiding option conflicts entirely"
     Put your changes in `local.conf` instead of `00-options.conf`. It is loaded
     last, so `set -g @cfg_theme "nord"` there overrides the default without
-    ever touching a tracked file. See [Local overrides](configuration.md#local-overrides).
+    ever touching a tracked file. See [Local overrides](../configuration/index.md#local-overrides).
 
 ---
 

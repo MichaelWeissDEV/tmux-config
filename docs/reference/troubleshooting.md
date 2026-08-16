@@ -224,7 +224,7 @@ In order of likelihood:
 
 5. **You used `%if` against an option set earlier in the same file.** It reads
    empty and the block is skipped, with no error. This is the sharpest edge in
-   tmux configuration — see [The `%if` trap](architecture.md#the-if-trap).
+   tmux configuration — see [The `%if` trap](../architecture.md#the-if-trap).
 
 Check what tmux actually holds:
 

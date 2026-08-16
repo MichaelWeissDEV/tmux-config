@@ -139,7 +139,7 @@ set -g status-left "#{?client_prefix,#[bg=#{@thm_urgent}],#[bg=#{@thm_accent}]}\
 #[fg=#{@thm_bg},bold] #S #[default] "
 ```
 
-For more than one colour, copy a theme file instead — see [Theming](theming.md).
+For more than one colour, copy a theme file instead — see [Theming](themes.md).
 
 ### Powerline separators
 
@@ -192,7 +192,7 @@ bind -N "Open a URL from this pane" u display-popup -E -w 70% -h 40% "\
 ```
 
 For anything more than URLs, the `extrakto` plugin does this properly — see
-[Plugins](plugins.md).
+[Plugins](../plugins/available.md).
 
 ---
 
@@ -224,7 +224,7 @@ at parse time, with no shell fork:
 %endif
 ```
 
-See [Capabilities](capabilities.md) for the full list.
+See [Capabilities](../reference/capabilities.md) for the full list.
 
 ---
 

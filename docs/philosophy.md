@@ -8,39 +8,45 @@ input-safety and option-definition rules are broken.
 
 ## The rules
 
-1. **Preserve tmux defaults.** No global `unbind-key -a`, ever. Every default
-   binding keeps working; this project adds to tmux, it does not replace its
-   interaction model.
-2. **Do not intercept application input by default** — with one documented
+1. **Preserve tmux defaults.** No global `unbind-key -a`, ever, and no blanket
+   reset of a key table. Every default binding keeps working; this project adds
+   to tmux, it does not replace its interaction model.
+2. **Improve a default, never repurpose it.** A tmux binding may be made better
+   at the job it already does — <kbd>prefix</kbd> <kbd>c</kbd> opening a window
+   in the current directory is an improvement. Giving that key an *unrelated*
+   job is not, and is forbidden. Where the rule is deliberately broken, the
+   exception is registered, justified, and shown to the user; see
+   [the key model](#the-key-model) below.
+3. **Do not intercept application input by default** — with one documented
    exception, below.
-3. **Neovim receives terminal input unchanged.** No Ctrl-based key is taken
+4. **Neovim receives terminal input unchanged.** No Ctrl-based key is taken
    globally by the default config.
-4. **Native tmux before plugins.** If current tmux can do it properly, the
+5. **Native tmux before plugins.** If current tmux can do it properly, the
    plugin does not ship.
-5. **Plugins are optional and vendored.** All off by default.
-6. **Unknown terminals get conservative behaviour.** Nothing is assumed.
-7. **Capabilities are detected, not assumed.**
-8. **SSH is a primary supported environment**, not an afterthought.
-9. **No mandatory Nerd Fonts.**
-10. **No mandatory external tools.**
-11. **No hidden downloads.** tmux never fetches anything at startup.
-12. **No automatic plugin updates.**
-13. **User overrides always load last.**
-14. **Every feature is documented.**
-15. **Every binding has an owner and a scope.**
-16. **Every plugin has a pinned upstream revision.**
-17. **Configuration must be testable.**
-18. **The core keeps working when every optional dependency is absent.**
-19. **Visual defaults stay minimal.**
-20. **Stability beats cleverness.**
+6. **Plugins are optional and vendored.** All off by default.
+7. **Unknown terminals get conservative behaviour.** Nothing is assumed.
+8. **Capabilities are detected, not assumed.**
+9. **SSH is a primary supported environment**, not an afterthought.
+10. **No mandatory Nerd Fonts.**
+11. **No mandatory external tools.**
+12. **No hidden downloads.** tmux never fetches anything at startup.
+13. **No automatic plugin updates.**
+14. **User overrides always load last.**
+15. **Every feature is documented.**
+16. **Every binding has an owner and a scope.**
+17. **Every plugin has a pinned upstream revision.**
+18. **Configuration must be testable.**
+19. **The core keeps working when every optional dependency is absent.**
+20. **Visual defaults stay minimal.**
+21. **Stability beats cleverness.**
 
 ---
 
-## The one exception to rule 2
+## The one exception to rule 3
 
 **<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> is bound globally by default.**
 
-This is a real deviation from rule 2 and is called out rather than hidden. A
+This is a real deviation from rule 3 and is called out rather than hidden. A
 `bind -n` binding means tmux consumes the key **before** the program in your
 pane sees it. Alt+number is used by terminal browsers, some TUI applications,
 and Windows Terminal's own tab switching.
@@ -49,7 +55,7 @@ It is the default because jumping straight to a window is the single most-used
 action in day-to-day tmux, and requiring the prefix for it costs more than the
 collision does for most people.
 
-The narrower form of rule 2 that this project actually enforces:
+The narrower form of rule 3 that this project actually enforces:
 
 > **No Ctrl-based key is intercepted globally by default.**
 
@@ -73,12 +79,12 @@ config intercepts nothing at all.
 `@cfg_plugin_navigator` binds <kbd>Ctrl</kbd>+<kbd>h/j/k/l</kbd> globally and
 forwards them when the pane is running vim or nvim.
 
-It is **off by default** precisely because it breaks rule 3, and
+It is **off by default** precisely because it breaks rule 4, and
 `scripts/check` reports the interception when you enable it. That is intended:
 the tool tells you the truth about what your config does, rather than making an
 exception for a plugin the project happens to ship.
 
-See [Neovim](neovim.md).
+See [Neovim](integration/neovim.md).
 
 ---
 
@@ -124,7 +130,41 @@ There is a hard technical reason for that, not just taste:
 
 The consequence is a design that stays correct when three clients on three
 different operating systems attach to the same server. See
-[Capabilities](capabilities.md).
+[Capabilities](reference/capabilities.md).
+
+---
+
+## The key model
+
+Rule 2 is the one that needed machinery rather than good intentions, because
+"do not repurpose a default" is easy to write down and easy to break by
+accident. So the keys are data, not prose.
+
+Every binding this project knows about — tmux's own included — lives in a
+registry under `keys/`. The upstream half is **captured from tmux itself** by
+starting a pristine server and reading `list-keys`; it is never transcribed
+from a cheat sheet, a blog post or anybody's memory. Each of this config's own
+bindings declares its provenance:
+
+| Origin | Meaning |
+| --- | --- |
+| `tmux` | a plain tmux default, untouched |
+| `tmux-enhanced` | a default kept for **the same purpose**, improved |
+| `tmux-config` | added on a key tmux leaves free |
+| `tmux-override` | a default **displaced** — the exception to rule 2 |
+
+`scripts/check-key-conflicts` then enforces the rule mechanically. It fails the
+build when a binding takes a tmux default without declaring it, when something
+claiming to be an *enhancement* actually changed the command's purpose, and
+when an *override* does not say what it displaced and where that behaviour went.
+`scripts/check` additionally compares the registry against a live tmux server in
+both directions, so a binding cannot exist without being written down, and a
+registered binding cannot quietly stop working.
+
+The whole config displaces **four** tmux defaults. Each one is listed in the
+[complete keymap](keybindings/complete.md) with its justification, and the
+[Key Explorer](keybindings/key-explorer.md) shows you the displaced command when
+you inspect the key.
 
 ---
 
@@ -141,3 +181,5 @@ configs:
 | Detected, not assumed | `terminal-overrides ",xterm-256color:RGB"` on a terminal that cannot |
 | Core works alone | A config that breaks entirely when one plugin fails to load |
 | No hidden downloads | tmux hanging at startup on a machine with no network |
+| Improve, never repurpose | `prefix r` meaning "reload" in one config and "refresh" in every other |
+| Keys captured from tmux | Hand-written keymap tables that are wrong within one release |

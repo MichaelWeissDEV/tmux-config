@@ -9,7 +9,7 @@ set -g @cfg_theme "nord"
 
 Each option in that file carries its accepted values and the reasoning behind
 its default. This page explains the ones with tradeoffs worth understanding.
-For a bare list of every option, see the [Options reference](reference/options.md).
+For a bare list of every option, see the [Options reference](../reference/options.md).
 
 ---
 
@@ -35,7 +35,7 @@ set -gF mouse "#{@cfg_mouse}"
     extending this config, and tmux reports no error when you get it wrong.
 
 The `%if` mechanism has a sharp edge that shapes the whole file layout — see
-[Architecture → The `%if` trap](architecture.md#the-if-trap).
+[Architecture → The `%if` trap](../architecture.md#the-if-trap).
 
 ---
 
@@ -163,7 +163,7 @@ Linux, because a WSL system reports `Linux` from `uname` and may even have
 !!! note "Terminal support for OSC 52"
     Ghostty, kitty, WezTerm, Alacritty, foot, iTerm2, and Windows Terminal
     support it. **macOS Terminal.app does not.** See
-    [Troubleshooting → Clipboard](troubleshooting.md#copying-does-not-reach-my-clipboard).
+    [Troubleshooting → Clipboard](../reference/troubleshooting.md#copying-does-not-reach-my-clipboard).
 
 ### Pasting
 
@@ -182,7 +182,7 @@ set -g @cfg_theme "catppuccin-mocha"
 ```
 
 Six themes ship with the config. Writing your own is a twenty-line file —
-see [Theming](theming.md).
+see [Theming](../customization/themes.md).
 
 ### Status bar
 
@@ -254,7 +254,7 @@ cp ~/.config/tmux/local.conf.example ~/.config/tmux/local.conf
 ```
 
 That example file is not empty boilerplate — it ships every
-[recipe](recipes.md) already written and commented out: popups for lazygit and
+[recipe](../customization/recipes.md) already written and commented out: popups for lazygit and
 man pages, an fzf session switcher, a git branch in the status bar, per-host
 settings. Uncomment what you want.
 

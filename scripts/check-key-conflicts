@@ -1,0 +1,259 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  check-key-conflicts — enforce the project's rules about tmux's own keys
+# ==============================================================================
+#
+#  Usage:  ./scripts/check-key-conflicts
+#
+#  Rule 2 of the philosophy says a tmux default may be IMPROVED but not
+#  repurposed. That is easy to write down and easy to violate by accident, so
+#  it is checked mechanically here rather than trusted to review.
+#
+#  What is checked:
+#
+#    1. registry hygiene   unique keys, descriptions and categories present
+#    2. provenance         a custom binding on a key tmux already uses must
+#                          declare itself enhanced or override — never plain
+#    3. semantics          `tmux-enhanced` must keep the upstream command's
+#                          purpose; only flags and appended commands may differ
+#    4. justification      every `tmux-override` must name what it displaces
+#                          and explain where that behaviour went
+#    5. reserved keys      keys the project promises never to take
+#    6. explorer key       prefix H must be free in EVERY upstream snapshot
+#    7. Neovim safety      no unconditional root binding on an editor key
+#
+#  Check 6 is why this is a script and not a one-time inspection: today only
+#  one snapshot exists, so it proves little. When CI adds tmux 3.3–3.6
+#  snapshots the same check runs against all of them automatically, with
+#  nobody having to remember to redo it.
+#
+#  Exit status: 0 clean, 1 on any violation.
+# ==============================================================================
+
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LC_ALL=C
+export LC_ALL
+
+FAILED=0
+ok()  { printf '  ok    %s\n' "$1"; }
+bad() { printf '  FAIL  %s\n' "$1"; FAILED=$((FAILED+1)); }
+det() { printf '        %s\n' "$1"; }
+
+CUSTOM="$(mktemp)"; MERGED="$ROOT/keys/generated/keys.tsv"
+trap 'rm -f "$CUSTOM"' EXIT
+cat "$ROOT"/keys/custom/*.tsv | awk -F'\t' 'NF==13 && $1!="table"' > "$CUSTOM"
+
+printf '\nkey conflict check\n\n'
+
+# ------------------------------------------------------------------------------
+printf 'Registry hygiene\n'
+# ------------------------------------------------------------------------------
+# A key may legitimately appear twice under DIFFERENT conditions (y does, once
+# per @cfg_copy_stays_in_mode value). The same key under the same condition is
+# always a mistake: one silently wins and which one depends on file order.
+DUP="$(awk -F'\t' '{print $1 "\t" $2 "\t" $11}' "$CUSTOM" | sort | uniq -d)"
+if [ -n "$DUP" ]; then
+  bad "the same key is registered twice under one condition"
+  printf '%s\n' "$DUP" | while IFS="$(printf '\t')" read -r t k c; do det "$t $k (condition: $c)"; done
+else
+  ok "every custom binding is unique per (table, key, condition)"
+fi
+
+MISS="$(awk -F'\t' '$4=="-" || $4=="" || $5=="-" || $5=="" {print $1 " " $2}' "$CUSTOM")"
+[ -n "$MISS" ] && { bad "custom bindings without a description or category"; printf '%s\n' "$MISS" | while read -r l; do det "$l"; done; } \
+               || ok "every custom binding has a description and a category"
+
+BADCAT="$(awk -F'\t' '
+  $5 !~ /^(General|Sessions|Windows|Panes|Layouts|Copy mode|Buffers|Configuration)$/ {print $1 " " $2 " -> " $5}' "$CUSTOM")"
+[ -n "$BADCAT" ] && { bad "unknown category"; printf '%s\n' "$BADCAT" | while read -r l; do det "$l"; done; } \
+                 || ok "every category is one of the eight known groups"
+
+BADORG="$(awk -F'\t' '$6 !~ /^(tmux|tmux-enhanced|tmux-config|tmux-override|plugin|user)$/ {print $1 " " $2 " -> " $6}' "$CUSTOM")"
+[ -n "$BADORG" ] && { bad "unknown origin"; printf '%s\n' "$BADORG" | while read -r l; do det "$l"; done; } \
+                 || ok "every origin is a known value"
+
+# ------------------------------------------------------------------------------
+printf '\nProvenance and semantics\n'
+# ------------------------------------------------------------------------------
+#  The semantic signature of a command is the sequence of tmux commands it
+#  runs, with flags and arguments dropped — except for `send-keys -X`, where
+#  the copy-mode verb IS the meaning and must be kept. Comparing signatures is
+#  what distinguishes "same purpose, better" from "same key, different job":
+#
+#      new-window            vs  new-window -c "#{pane_current_path}"
+#      signature: new-window     signature: new-window          -> enhanced, ok
+#
+#      last-window           vs  select-pane -R
+#      signature: last-window    signature: select-pane         -> repurposed
+#
+#  An enhancement may APPEND (select-pane -> select-pane; send-keys -X
+#  clear-selection), so upstream must be a leading subsequence of ours, not
+#  necessarily equal.
+
+NEWEST="$(for f in "$ROOT"/keys/upstream/tmux-*.tsv; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | tail -n1)"
+UP="$ROOT/keys/upstream/tmux-$NEWEST.tsv"
+
+REPORT="$(awk -F'\t' -v up="$UP" '
+  function signature(cmd,   parts, n, i, out, seg, name, verb) {
+    n = split(cmd, parts, / *\\; */)
+    out = ""
+    for (i = 1; i <= n; i++) {
+      seg = parts[i]
+      sub(/^ +/, "", seg)
+      name = seg; sub(/ .*$/, "", name)
+      verb = ""
+      if (name == "send-keys" && seg ~ / -X /) {
+        verb = seg; sub(/^.* -X +/, "", verb); sub(/ .*$/, "", verb)
+        name = name ":" verb
+      }
+      out = out (out == "" ? "" : ";") name
+    }
+    return out
+  }
+  function is_prefix_of(a, b) { return substr(b, 1, length(a)) == a }
+
+  BEGIN { FS = "\t" }
+  NR == FNR {
+    if (FNR > 4 && NF >= 5) { ucmd[$1 "\t" $2] = $4 }
+    next
+  }
+  {
+    k = $1 "\t" $2; origin = $6; long = $13
+    if (!(k in ucmd)) {
+      # tmux leaves this key free — it must NOT claim to enhance or override.
+      if (origin == "tmux-enhanced" || origin == "tmux-override")
+        print "ORPHAN\t" $1 "\t" $2 "\t" origin
+      next
+    }
+    us = signature(ucmd[k]); cs = signature($3)
+    if (origin == "tmux") {
+      print "PLAIN\t" $1 "\t" $2 "\t" ucmd[k]
+    } else if (origin == "tmux-config" || origin == "plugin") {
+      print "UNDECLARED\t" $1 "\t" $2 "\t" ucmd[k]
+    } else if (origin == "tmux-enhanced") {
+      if (!is_prefix_of(us, cs)) print "NOTENHANCED\t" $1 "\t" $2 "\t" ucmd[k] " => " $3
+    } else if (origin == "tmux-override") {
+      if (long == "-" || long == "") print "UNJUSTIFIED\t" $1 "\t" $2 "\t" ucmd[k]
+      if (is_prefix_of(us, cs)) print "SHOULDBEENHANCED\t" $1 "\t" $2 "\t" ucmd[k] " => " $3
+    }
+  }
+' "$UP" "$CUSTOM")"
+
+show() { # show <tag> <message>
+  m="$(printf '%s\n' "$REPORT" | awk -F'\t' -v t="$1" '$1==t {print $2 " " $3 "   (" $4 ")"}')"
+  if [ -n "$m" ]; then
+    bad "$2"
+    printf '%s\n' "$m" | while read -r l; do det "$l"; done
+  fi
+}
+
+show UNDECLARED       "a tmux default is taken over without declaring it (use tmux-enhanced or tmux-override)"
+show PLAIN            "a custom row claims origin=tmux for a key it rebinds"
+show ORPHAN           "declared enhanced/override, but tmux does not bind this key at all"
+show NOTENHANCED      "declared tmux-enhanced but the command's purpose changed — this is a repurposing"
+show UNJUSTIFIED      "declared tmux-override without a long_description saying where the default went"
+show SHOULDBEENHANCED "declared tmux-override but the purpose is unchanged — mark it tmux-enhanced"
+
+printf '%s\n' "$REPORT" | grep -q . || ok "no binding repurposes a tmux default"
+if [ -n "$REPORT" ] && [ "$FAILED" -eq 0 ]; then ok "no binding repurposes a tmux default"; fi
+
+# Report the sanctioned overrides so they stay visible rather than forgotten.
+awk -F'\t' '$6=="tmux-override" {print $1 " " $2}' "$CUSTOM" | while read -r l; do
+  printf '        note: sanctioned override — %s\n' "$l"
+done
+
+# ------------------------------------------------------------------------------
+printf '\nReserved tmux keys\n'
+# ------------------------------------------------------------------------------
+#  Keys this project promises to leave to tmux, because they are how a tmux
+#  user gets help and reloads a client. Taking one of these is the exact
+#  mistake that made `prefix r` mean two different things in two configs.
+
+for rk in '?' '/' 'r'; do
+  if awk -F'\t' -v k="$rk" '$1=="prefix" && $2==k {found=1} END{exit !found}' "$CUSTOM"; then
+    bad "prefix $rk is reserved for tmux but the registry rebinds it"
+  else
+    ok "prefix $rk left to tmux"
+  fi
+done
+
+# ------------------------------------------------------------------------------
+printf '\nKeys this project claims\n'
+# ------------------------------------------------------------------------------
+#  Every key the project moved something ONTO must be free in EVERY tmux version
+#  we claim to support — not just the newest one we happen to have captured.
+#
+#  prefix H is the obvious case (the Key Explorer), but it is not the only one
+#  that matters. prefix Tab is load-bearing: it is where last-window went, and
+#  the justification for displacing prefix l depends on Tab being available.
+#  Same for the keys that took over from the defaults this config handed back.
+#
+#  With one snapshot this proves little. It becomes a real guarantee as CI adds
+#  tmux 3.3–3.6, and nobody has to remember to re-check by hand.
+
+EXPLORER_KEY="$(awk -F'\t' '$3 ~ /key-explorer/ {print $2; exit}' "$CUSTOM")"
+[ -n "$EXPLORER_KEY" ] || bad "no binding in the registry opens the Key Explorer"
+
+SNAPS="$(ls "$ROOT"/keys/upstream/tmux-*.tsv 2>/dev/null | wc -l | tr -d ' ')"
+CLASH=0
+# Every prefix-table key this config claims for itself, taken from the registry
+# rather than listed here, so a new binding is covered the day it is added.
+CLAIMED="$(awk -F'\t' '$1=="prefix" && ($6=="tmux-config") {print $2}' "$CUSTOM" | sort -u)"
+for k in $CLAIMED; do
+  for f in "$ROOT"/keys/upstream/tmux-*.tsv; do
+    [ -f "$f" ] || continue
+    v="$(basename "$f" .tsv | sed 's/^tmux-//')"
+    if awk -F'\t' -v key="$k" 'NR>4 && $1=="prefix" && $2==key {found=1} END{exit !found}' "$f"; then
+      bad "prefix $k is claimed as a new binding but is a tmux default in $v"
+      CLASH=1
+    fi
+  done
+done
+if [ "$CLASH" -eq 0 ]; then
+  ok "all $(printf '%s\n' "$CLAIMED" | grep -c .) claimed prefix keys are free in every captured tmux ($SNAPS snapshot(s))"
+  [ -n "$EXPLORER_KEY" ] && ok "  including prefix $EXPLORER_KEY, the Key Explorer"
+fi
+
+# ------------------------------------------------------------------------------
+printf '\nQuick reference\n'
+# ------------------------------------------------------------------------------
+#  keys/quick.tsv is the one list a human chooses. Curation is fine; drift is
+#  not. Every entry must still exist in the merged registry, so a key that is
+#  renamed or dropped cannot linger in the Explorer's opening view or in the
+#  published quick-reference page.
+
+if [ ! -f "$MERGED" ]; then
+  bad "keys/generated/keys.tsv is missing — run ./scripts/gen-keys"
+else
+  GHOST="$(awk -F'\t' '
+    NR==FNR { if (FNR > 4) known[$1 "\t" $2] = 1; next }
+    /^#/ || $1 == "table" || NF < 2 { next }
+    !(($1 "\t" $2) in known) { print $1 " " $2 }
+  ' "$MERGED" "$ROOT/keys/quick.tsv")"
+  if [ -n "$GHOST" ]; then
+    bad "the quick reference names keys that no longer exist"
+    printf '%s\n' "$GHOST" | while read -r l; do det "$l"; done
+  else
+    ok "every quick-reference key exists in the registry ($(grep -cvE '^#|^table' "$ROOT/keys/quick.tsv") entries)"
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+printf '\nNeovim input safety\n'
+# ------------------------------------------------------------------------------
+#  Rule 20: no editor key may be grabbed globally by default. A root binding on
+#  one of these is only acceptable behind an explicit opt-in condition, which
+#  is how vim-tmux-navigator is allowed to exist.
+
+NVIM="$(awk -F'\t' '
+  $1=="root" && $2 ~ /^(C-h|C-j|C-k|C-l|C-v|C-w|C-a|C-e|C-u|C-d|C-o|Escape|C-\[)$/ && ($11=="-" || $11=="") \
+    {print $2}' "$CUSTOM")"
+[ -n "$NVIM" ] && { bad "editor keys bound globally with no opt-in condition"; printf '%s\n' "$NVIM" | while read -r l; do det "$l"; done; } \
+               || ok "no editor key is globally bound by default"
+
+# ------------------------------------------------------------------------------
+printf '\n'
+if [ "$FAILED" -gt 0 ]; then printf '%d violation(s).\n\n' "$FAILED"; exit 1; fi
+printf 'No key conflicts.\n\n'
+exit 0

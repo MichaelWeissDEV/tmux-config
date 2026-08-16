@@ -1,4 +1,8 @@
-# Your personal overrides — intentionally untracked
+# Your personal overrides — intentionally untracked.
+#   local-options.conf   your @cfg_* values, read BEFORE the modules
+#   local.conf           raw tmux commands, read LAST
+# See docs/configuration/local-overrides.md for why there are two.
+local-options.conf
 local.conf
 config/themes/custom.conf
 

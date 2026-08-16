@@ -1,0 +1,243 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  gen-docs — generate the keybinding pages from the registry
+# ==============================================================================
+#
+#  Usage:  ./scripts/gen-docs            write the pages
+#          ./scripts/gen-docs --check    fail if any page is stale
+#
+#  Writes:
+#      docs/keybindings/complete.md   every binding, grouped by category
+#      docs/keybindings/quick.md      the curated shortlist from keys/quick.tsv
+#
+#  Both come from keys/generated/keys.tsv. Nothing here is hand-maintained,
+#  which is the point: a hand-written key table is wrong within a week, and the
+#  key tables are the pages readers actually use.
+#
+#  This replaces the older gen-keybindings.sh, which read a live tmux server.
+#  Reading the registry instead means the docs carry what a server cannot tell
+#  you — where a binding came from, what it displaced, and why.
+# ==============================================================================
+
+set -eu
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LC_ALL=C
+export LC_ALL
+
+REG="$ROOT/keys/generated/keys.tsv"
+QUICK="$ROOT/keys/quick.tsv"
+
+[ -f "$REG" ] || { printf 'missing %s — run ./scripts/gen-keys\n' "$REG" >&2; exit 1; }
+
+MODE=write
+case "${1:-}" in
+  --check) MODE=check ;;
+  "") ;;
+  *) printf 'usage: %s [--check]\n' "$0" >&2; exit 2 ;;
+esac
+
+TMPD="$(mktemp -d)"
+trap 'rm -rf "$TMPD"' EXIT
+
+SNAPSHOTS="$(sed -n 's/^# upstream snapshots: //p' "$REG")"
+
+# ------------------------------------------------------------------------------
+#  Shared awk helpers, kept in one file so both pages format keys identically.
+# ------------------------------------------------------------------------------
+#  awk takes its program EITHER from -f files or from an inline string, never
+#  both: given `awk -f lib.awk '{...}' file`, the inline program is read as a
+#  filename and the real work silently never runs. So every program below is a
+#  file, and shared helpers are just another -f.
+cat > "$TMPD/lib.awk" <<'AWK'
+# Markdown-escape a key so `|` does not end the table cell and `*`/`_` do not
+# turn into emphasis. Keys like | _ * # are all real tmux keys, so this is not
+# a theoretical concern.
+function mdkey(k) {
+  gsub(/\\/, "\\\\", k)
+  gsub(/\|/, "\\|", k)
+  return "<kbd>" k "</kbd>"
+}
+function mdcell(s) {
+  gsub(/\|/, "\\|", s)
+  return s
+}
+function keylabel(tbl, key) {
+  if (tbl == "prefix") return "prefix " key
+  return key
+}
+function originmark(o) {
+  if (o == "tmux-enhanced") return " ^+^"
+  if (o == "tmux-override") return " ^!^"
+  if (o == "tmux-config")   return " ^*^"
+  if (o == "plugin")        return " ^p^"
+  return ""
+}
+AWK
+
+cat > "$TMPD/complete.awk" <<'AWK'
+NR <= 4   { next }
+$1 != tbl { next }
+{
+  cat = $5
+  line = "| " mdkey($2) " | " mdcell($4) originmark($6)
+  extra = ""
+  if ($11 != "-") extra = extra " *(only when `" $11 "`)*"
+  if ($7 == "yes") extra = extra " *(repeats)*"
+  line = line extra " | `" mdcell($3) "` |"
+  rows[cat] = rows[cat] line "\n"
+  if ($6 == "tmux-override")
+    notes[cat] = notes[cat] "- " mdkey($2) " displaces the tmux default `" mdcell($9) "`. " mdcell($13) "\n"
+}
+END {
+  n = split("General,Sessions,Windows,Panes,Layouts,Copy mode,Buffers,Configuration", order, ",")
+  for (i = 1; i <= n; i++) {
+    c = order[i]
+    if (!(c in rows)) continue
+    printf "\n### %s\n\n", c
+    printf "| Key | Action | Runs |\n| --- | --- | --- |\n"
+    printf "%s", rows[c]
+    if (c in notes) printf "\n%s", notes[c]
+  }
+}
+AWK
+
+cat > "$TMPD/quick.awk" <<'AWK'
+# First file is the registry, second the curated shortlist.
+NR == FNR {
+  if (FNR > 4) {
+    desc[$1 "\t" $2] = $4
+    cat[$1 "\t" $2]  = $5
+    org[$1 "\t" $2]  = $6
+  }
+  next
+}
+/^#/ || $1 == "table" || NF < 2 { next }
+{
+  k = $1 "\t" $2
+  # A missing key is not skipped silently — scripts/check-key-conflicts fails
+  # the build for it, so reaching here means the registry really has it.
+  if (!(k in desc)) next
+  c = cat[k]
+  rows[c] = rows[c] "| " mdkey(keylabel($1, $2)) " | " mdcell(desc[k]) originmark(org[k]) " |\n"
+}
+END {
+  n = split("General,Sessions,Windows,Panes,Layouts,Copy mode,Buffers,Configuration", order, ",")
+  for (i = 1; i <= n; i++) {
+    c = order[i]
+    if (!(c in rows)) continue
+    printf "\n## %s\n\n| Key | Action |\n| --- | --- |\n%s", c, rows[c]
+  }
+}
+AWK
+
+# ==============================================================================
+#  docs/keybindings/complete.md
+# ==============================================================================
+gen_complete() {
+  cat <<HEADER
+# Complete keymap
+
+!!! info "This page is generated"
+    Do not edit it by hand. \`scripts/gen-docs\` builds it from the key
+    registry in [\`keys/\`](https://github.com/MichaelWeissDEV/tmux-config/tree/main/keys),
+    and CI fails if the two disagree. Regenerate with:
+
+    \`\`\`bash
+    ./scripts/gen-docs
+    \`\`\`
+
+Every key tmux-config knows about — tmux's own defaults included. Throughout,
+**\`prefix\`** means the prefix key, <kbd>Ctrl</kbd>+<kbd>b</kbd> unless you
+changed \`@cfg_prefix\`.
+
+Prefer to look this up without leaving your terminal? Press
+<kbd>prefix</kbd> <kbd>H</kbd> for the [Key Explorer](key-explorer.md), which
+searches the same data.
+
+| Mark | Meaning |
+| --- | --- |
+| *(none)* | a plain tmux default, untouched by this config |
+| ^+^ | a tmux default kept for the same purpose, improved |
+| ^!^ | a tmux default **displaced** — see the note under the table |
+| ^\*^ | added by tmux-config on a key tmux leaves free |
+| ^p^ | contributed by an optional plugin |
+
+Bindings marked *only when* apply solely when that option is set; the tmux
+default applies otherwise.
+
+HEADER
+
+  for tbl in prefix root copy-mode-vi copy-mode; do
+    case "$tbl" in
+      prefix)       title="With the prefix"; intro="Press the prefix key, release, then the key below." ;;
+      root)         title="Without the prefix"; intro="Bound globally. tmux intercepts these before the program in your pane sees them." ;;
+      copy-mode-vi) title="Copy mode (vi keys)"; intro="Active **only** inside copy mode, and only while \`@cfg_mode_keys\` is \`vi\` — the default. These have no effect on Neovim or your shell." ;;
+      copy-mode)    title="Copy mode (emacs keys)"; intro="Active **only** inside copy mode, and only while \`@cfg_mode_keys\` is \`emacs\`." ;;
+    esac
+
+    printf '\n## %s\n\n%s\n' "$title" "$intro"
+
+    awk -F'\t' -v tbl="$tbl" -f "$TMPD/lib.awk" -f "$TMPD/complete.awk" "$REG"
+  done
+
+  printf '\n---\n\nGenerated from the key registry. Upstream tmux snapshot: %s.\n' "$SNAPSHOTS"
+}
+
+# ==============================================================================
+#  docs/keybindings/quick.md
+# ==============================================================================
+gen_quick() {
+  cat <<'HEADER'
+# Quick reference
+
+The keys worth knowing first. This shortlist is chosen by hand — the
+[complete keymap](complete.md) has all 300-odd — but every key on it is checked
+against the registry by CI, so nothing here can quietly stop existing.
+
+It is the same list the [Key Explorer](key-explorer.md) opens with. Press
+<kbd>prefix</kbd> <kbd>H</kbd> to get it inside tmux, where it is searchable.
+
+Throughout, **`prefix`** means <kbd>Ctrl</kbd>+<kbd>b</kbd> unless you changed
+`@cfg_prefix`.
+
+HEADER
+
+  awk -F'\t' -f "$TMPD/lib.awk" -f "$TMPD/quick.awk" "$REG" "$QUICK"
+
+  cat <<'FOOTER'
+
+---
+
+^+^ improved tmux default  ^!^ displaced tmux default  ^*^ added by tmux-config
+
+Copy-mode keys are shown without the prefix: press <kbd>prefix</kbd>
+<kbd>[</kbd> to enter copy mode first.
+FOOTER
+}
+
+# ==============================================================================
+#  Write or check
+# ==============================================================================
+write_one() { # write_one <generator> <path>
+  target="$ROOT/$2"
+  mkdir -p "$(dirname "$target")"
+  "$1" > "$TMPD/out"
+  if [ "$MODE" = check ]; then
+    if [ ! -f "$target" ]; then
+      printf 'missing %s — run ./scripts/gen-docs\n' "$2" >&2; exit 1
+    fi
+    if ! diff -u "$target" "$TMPD/out" >/dev/null; then
+      printf '%s is stale — run ./scripts/gen-docs\n' "$2" >&2
+      diff -u "$target" "$TMPD/out" >&2 || true
+      exit 1
+    fi
+    printf '%s is up to date\n' "$2"
+  else
+    cp "$TMPD/out" "$target"
+    printf 'wrote %s\n' "$2"
+  fi
+}
+
+write_one gen_complete docs/keybindings/complete.md
+write_one gen_quick    docs/keybindings/quick.md

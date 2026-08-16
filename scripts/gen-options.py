@@ -124,7 +124,7 @@ def main():
     print("    ```")
     print()
     print("Every option below is set in "
-          "[`config/00-options.conf`](../configuration.md). Change a value there, "
+          "[`config/00-options.conf`](../configuration/index.md). Change a value there, "
           "or override it in `local.conf`, then press ++ctrl+b++ ++r++.")
     print()
 

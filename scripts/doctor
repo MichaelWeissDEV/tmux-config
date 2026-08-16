@@ -50,7 +50,7 @@ if [ "$(printf '%s\n3.3\n' "$TMUX_VER" | sort -V | head -n1)" = "3.3" ]; then
   pass "tmux $TMUX_VER (>= 3.3 required)"
 else
   fail "tmux $TMUX_VER is too old — 3.3 or newer is required" \
-       "See docs/installation.md#older-tmux"
+       "See docs/getting-started/installation.md#older-tmux"
 fi
 
 # ------------------------------------------------------------------------------
@@ -158,6 +158,7 @@ cp -R "$ROOT/config" "$T/config" 2>/dev/null
 [ -d "$ROOT/terminals" ] && cp -R "$ROOT/terminals" "$T/terminals"
 [ -d "$ROOT/plugins" ] && cp -R "$ROOT/plugins" "$T/plugins"
 [ -d "$ROOT/scripts" ] && cp -R "$ROOT/scripts" "$T/scripts"
+[ -d "$ROOT/keys" ] && cp -R "$ROOT/keys" "$T/keys"
 sed "s|~/.config/tmux|$T|g; s|\$HOME/.config/tmux|$T|g" "$ROOT/tmux.conf" > "$T/tmux.conf"
 for f in "$T"/config/*.conf "$T"/capabilities/*.conf "$T"/terminals/*.conf; do
   [ -f "$f" ] || continue
@@ -198,6 +199,92 @@ for c in os display ssh utf8 truecolor colors; do
 done
 
 # ------------------------------------------------------------------------------
+head_ "Keys"
+# ------------------------------------------------------------------------------
+#  The four facts that decide what your keyboard actually does, read from the
+#  running server rather than from the config files — because an option you set
+#  in the wrong file is exactly the failure this is meant to catch.
+
+EFF_PREFIX="$(tmux -L "$SOCK" show -gv prefix 2>/dev/null || true)"
+EFF_PREFIX2="$(tmux -L "$SOCK" show -gv prefix2 2>/dev/null || true)"
+if [ -n "$EFF_PREFIX" ]; then
+  if [ -n "$EFF_PREFIX2" ] && [ "$EFF_PREFIX2" != "None" ]; then
+    pass "effective prefix: $EFF_PREFIX (secondary: $EFF_PREFIX2)"
+  else
+    pass "effective prefix: $EFF_PREFIX"
+  fi
+else
+  fail "no prefix key is set"
+fi
+
+EFF_MODE="$(tmux -L "$SOCK" show -gwv mode-keys 2>/dev/null || true)"
+case "$EFF_MODE" in
+  vi|emacs) pass "effective mode-keys: $EFF_MODE (copy mode only — not your shell or Neovim)" ;;
+  *)        warn "mode-keys is '${EFF_MODE:-<unset>}'" "Expected vi or emacs. Check @cfg_mode_keys." ;;
+esac
+
+# The registry is only useful if it still describes reality. This is the same
+# comparison scripts/check makes in CI, run against YOUR machine.
+if [ -x "$T/scripts/key-explorer" ] && [ -f "$T/keys/generated/keys.tsv" ]; then
+  # --socket keeps this synchronous; `run-shell` would return before the dump
+  # was finished being written.
+  "$T/scripts/key-explorer" --socket "$SOCK" --dump active > "$T/active.tsv" 2>/dev/null
+  TOTAL="$(grep -c . "$T/active.tsv" 2>/dev/null || printf 0)"
+  if [ "$TOTAL" -ge 100 ]; then
+    EXTRA="$(awk -F'\t' '$8 == "local"' "$T/active.tsv" | wc -l | tr -d ' ')"
+    if [ "$EXTRA" -eq 0 ]; then
+      pass "$TOTAL keys bound, all accounted for by the registry"
+    else
+      pass "$TOTAL keys bound"
+      printf '  %s%d from your local.conf or an active plugin:%s\n' "$C_DIM" "$EXTRA" "$C_0"
+      awk -F'\t' '$8 == "local" { printf "        %-20s %s\n", $5, substr($9, 1, 44) }' \
+        "$T/active.tsv" | head -8
+    fi
+  else
+    warn "could not read the live key state (got $TOTAL rows, expected 200+)" \
+         "The Key Explorer data may be missing — run ./scripts/gen-keys."
+  fi
+else
+  warn "key registry not found" "Run ./scripts/gen-keys to build keys/generated/keys.tsv."
+fi
+
+if [ -x "$ROOT/scripts/check-key-conflicts" ]; then
+  if "$ROOT/scripts/check-key-conflicts" >/dev/null 2>&1; then
+    pass "no tmux default is repurposed"
+  else
+    fail "a tmux default has been repurposed" \
+         "Run ./scripts/check-key-conflicts for the detail."
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+head_ "Plugins"
+# ------------------------------------------------------------------------------
+PLUG_ON="$(tmux -L "$SOCK" show -gv @cfg_plugins 2>/dev/null || true)"
+if [ "$PLUG_ON" != "on" ]; then
+  pass "plugins are off (nothing is sourced)"
+else
+  ANY=0
+  for pl in resurrect continuum navigator open sessionist logging extrakto fpp; do
+    [ "$(tmux -L "$SOCK" show -gv "@cfg_plugin_$pl" 2>/dev/null)" = "on" ] || continue
+    ANY=1
+    case "$pl" in
+      resurrect) dir=tmux-resurrect ;;      continuum) dir=tmux-continuum ;;
+      navigator) dir=vim-tmux-navigator ;;  open) dir=tmux-open ;;
+      sessionist) dir=tmux-sessionist ;;    logging) dir=tmux-logging ;;
+      extrakto) dir=extrakto ;;             fpp) dir=tmux-fpp ;;
+    esac
+    if [ -d "$ROOT/vendor/$dir" ]; then
+      pass "$pl enabled and vendored"
+    else
+      fail "$pl is enabled but vendor/$dir is missing" \
+           "Run ./scripts/update-vendor --list to see what is present."
+    fi
+  done
+  [ "$ANY" -eq 0 ] && pass "plugins enabled, none switched on"
+fi
+
+# ------------------------------------------------------------------------------
 head_ "Neovim input safety"
 # ------------------------------------------------------------------------------
 #  The project rule is that the DEFAULT config must not intercept the keys
@@ -216,7 +303,7 @@ if [ -z "$UNSAFE" ]; then
 else
   warn "globally bound, will not reach Neovim:$UNSAFE" \
        "Expected only if you enabled @cfg_vim_navigator." \
-       "That plugin routes these keys deliberately; see docs/neovim.md."
+       "That plugin routes these keys deliberately; see docs/integration/neovim.md."
 fi
 
 if printf '%s' "$ROOT_KEYS" | grep -qE '^bind-key +-T root +M-[1-9] '; then

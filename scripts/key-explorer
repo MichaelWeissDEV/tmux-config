@@ -1,0 +1,665 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  key-explorer — a searchable key reference, in a native tmux popup
+# ==============================================================================
+#
+#  Opened with `prefix H`. Also runnable directly for debugging:
+#
+#      ./scripts/key-explorer
+#      ./scripts/key-explorer --dump active     print rows and exit
+#
+#  DESIGN CONSTRAINTS (docs/philosophy.md rules 11, 12, 19, 20)
+#  -----------------------------------------------------------
+#    * POSIX shell, awk, sed and printf. Nothing else is required — no Python,
+#      no Node, no compiled helper, no fzf, no gum, no dialog.
+#    * No Nerd Font, no icons, no colour beyond bold/dim/reverse, no boxes
+#      inside the popup. tmux draws the frame; this draws a list.
+#    * The static data is read from keys/generated/keys.tsv, which is generated
+#      offline and committed. Opening the Explorer reads one file and, for the
+#      Active view, runs `tmux list-keys` once. That is the entire cost.
+#
+#  VIEWS
+#  -----
+#    Quick   the curated shortlist from keys/quick.tsv — the opening view,
+#            because 300 bindings is not an answer to "what can I press?"
+#    Active  what is ACTUALLY bound right now, read from `tmux list-keys`.
+#            Shows plugin keys when a plugin is on, and your own local.conf
+#            overrides, because it reads the running server rather than a file.
+#    All     everything in the registry, including bindings switched off by an
+#            option or belonging to a disabled plugin, marked as such.
+# ==============================================================================
+
+set -u
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REGISTRY="$ROOT/keys/generated/keys.tsv"
+QUICKLIST="$ROOT/keys/quick.tsv"
+
+LC_ALL=C
+export LC_ALL
+
+TAB="$(printf '\t')"
+
+if [ ! -f "$REGISTRY" ]; then
+  printf 'key-explorer: %s is missing.\nRun ./scripts/gen-keys to build it.\n' "$REGISTRY" >&2
+  [ -t 0 ] && { printf '\nPress any key to close.'; dd bs=1 count=1 >/dev/null 2>&1; }
+  exit 1
+fi
+
+TMP="$(mktemp -d)"
+trap 'tty_restore 2>/dev/null; rm -rf "$TMP"' EXIT INT TERM
+
+# ------------------------------------------------------------------------------
+#  Talking to the right tmux server
+# ------------------------------------------------------------------------------
+#  Normally there is nothing to decide: the Explorer runs inside a popup, $TMUX
+#  is set, and plain `tmux` reaches the server that launched it.
+#
+#  `--socket NAME` exists for the callers that are NOT inside that server —
+#  scripts/check and scripts/doctor, which load a throwaway config and then ask
+#  what it bound. Without it they would have to go through `run-shell`, which is
+#  ASYNCHRONOUS: the caller would be reading the output file while tmux was
+#  still writing it, and a partially written dump makes those checks pass
+#  vacuously. Naming the socket keeps the whole thing synchronous.
+TMUX_SOCKET=""
+if [ "${1:-}" = "--socket" ]; then
+  TMUX_SOCKET="${2:?--socket needs a name}"
+  shift 2
+fi
+
+tmux_q() {
+  if [ -n "$TMUX_SOCKET" ]; then
+    env -u TMUX tmux -L "$TMUX_SOCKET" "$@"
+  else
+    tmux "$@"
+  fi
+}
+
+# Naming a socket is a claim that a server is there. Verify it, because the
+# failure is otherwise INVISIBLE and dangerous: with no server to consult, the
+# Explorer reports every registered binding as bound — reasonable when a human
+# runs it outside tmux, but for scripts/check it would mean every assertion
+# about the live state passes while nothing was ever read. Fail loudly instead.
+#
+# The probe is `has-session`, not `list-keys`. `list-keys` is not a safe test:
+# on a socket with no server tmux STARTS one to answer, then happily reports
+# the stock keymap — so the caller gets a plausible-looking dump of a server
+# that was never theirs. `has-session` needs a real session, and a server tmux
+# may spin up to answer it has none, so it fails either way.
+if [ -n "$TMUX_SOCKET" ]; then
+  if ! env -u TMUX tmux -L "$TMUX_SOCKET" has-session >/dev/null 2>&1; then
+    printf 'key-explorer: no tmux session on socket "%s"\n' "$TMUX_SOCKET" >&2
+    exit 1
+  fi
+fi
+
+# ==============================================================================
+#  Data
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+#  live_bindings — what the running tmux server actually has bound
+# ------------------------------------------------------------------------------
+#  Emits: table<TAB>key<TAB>command
+#
+#  The parse anchors on `-T`, never on a field index: the optional -r/-n flags
+#  before it shift every column. Keys are UNESCAPED (`\"` -> `"`) so they can
+#  be compared with the registry, which stores them the way you press them.
+live_bindings() {
+  for t in prefix root copy-mode copy-mode-vi; do
+    tmux_q list-keys -T "$t" 2>/dev/null | awk -F' ' -v tbl="$t" -v OFS="$TAB" '
+      {
+        ti = 0
+        for (i = 1; i <= NF; i++) if ($i == "-T") { ti = i; break }
+        if (ti == 0 || $(ti + 1) != tbl) next
+        key = $(ti + 2); sub(/^\\/, "", key)
+        cmd = ""
+        for (i = ti + 3; i <= NF; i++) cmd = cmd (cmd == "" ? "" : " ") $i
+        gsub(/\t/, " ", cmd)
+        if (key == "" || cmd == "") next
+        print tbl, key, cmd
+      }'
+  done
+}
+
+# ------------------------------------------------------------------------------
+#  build_rows <view> — the display model
+# ------------------------------------------------------------------------------
+#  Emits one row per binding:
+#    catorder cat table key displaykey description origin status command
+#    displaces tags condition plugin long
+#
+#  `status` is what the All view needs and the Active view proves:
+#    active    bound right now
+#    off       in the registry, not bound — an option or plugin switched it off
+#    local     bound, but to something the registry does not know about
+#              (your local.conf, or a plugin binding its own keys)
+build_rows() {
+  view="$1"
+  live_bindings > "$TMP/live" 2>/dev/null || : > "$TMP/live"
+
+  # Which copy-mode table is actually in force. tmux keeps BOTH tables bound at
+  # all times and consults only the one `mode-keys` names, so `list-keys` alone
+  # would report 164 copy-mode bindings of which half are unreachable. Active
+  # must show the reachable half; All shows both, marking the other as off.
+  MODEKEYS="$(tmux_q show -gwv mode-keys 2>/dev/null)"
+  case "$MODEKEYS" in vi|emacs) ;; *) MODEKEYS="" ;; esac
+
+  awk -F"$TAB" -v OFS="$TAB" -v view="$view" -v quickfile="$QUICKLIST" \
+      -v modekeys="$MODEKEYS" '
+    function catorder(c) {
+      if (c == "General")       return 1
+      if (c == "Sessions")      return 2
+      if (c == "Windows")       return 3
+      if (c == "Panes")         return 4
+      if (c == "Layouts")       return 5
+      if (c == "Copy mode")     return 6
+      if (c == "Buffers")       return 7
+      if (c == "Configuration") return 8
+      return 9
+    }
+    # How the key is written in the list. The table is part of the answer:
+    # "v" alone is meaningless, "v" in copy mode is not.
+    function displaykey(tbl, key) {
+      if (tbl == "prefix")  return "Prefix " key
+      if (tbl == "root")    return key
+      return key
+    }
+    function humanise_cmd(c,   v) { v = c; sub(/ .*$/, "", v); return v }
+
+    # -------------------------------------------------------------------------
+    #  signature — compare a registry command with what tmux reports
+    # -------------------------------------------------------------------------
+    #  These two describe the same binding, and no amount of string comparison
+    #  will say so:
+    #
+    #     registry:   set -g status
+    #     list-keys:  set-option -g status
+    #
+    #     registry:   display-popup -E -w 80% -h 80% "~/.config/tmux/..."
+    #     list-keys:  display-popup -E -h "80%" -w "80%" /home/you/.config/...
+    #
+    #  tmux stores a binding in canonical form: aliases expand, flags come back
+    #  in its own order, values get quoted, and ~ has long since been resolved
+    #  by the shell. So matching is done on the SIGNATURE — the sequence of
+    #  tmux commands the binding runs, with flags and arguments dropped.
+    #
+    #  The one exception is `send-keys -X`, where the copy-mode verb IS the
+    #  meaning: copy-pipe and copy-pipe-and-cancel must not compare equal, or
+    #  the Explorer would happily tell you the wrong one is in force.
+    function alias_expand(name) {
+      if (name == "set")            return "set-option"
+      if (name == "setw")           return "set-window-option"
+      if (name == "display")        return "display-message"
+      if (name == "choose-window")  return "choose-tree"
+      if (name == "choose-session") return "choose-tree"
+      if (name == "splitw")         return "split-window"
+      if (name == "neww")           return "new-window"
+      if (name == "selectp")        return "select-pane"
+      if (name == "selectw")        return "select-window"
+      if (name == "resizep")        return "resize-pane"
+      if (name == "killp")          return "kill-pane"
+      if (name == "lsk")            return "list-keys"
+      if (name == "source")         return "source-file"
+      return name
+    }
+    function signature(cmd,   parts, n, i, out, seg, name, verb) {
+      n = split(cmd, parts, / *\\; */)
+      out = ""
+      for (i = 1; i <= n; i++) {
+        seg = parts[i]
+        sub(/^ +/, "", seg)
+        name = seg; sub(/ .*$/, "", name)
+        name = alias_expand(name)
+        if (name == "send-keys" && seg ~ / -X /) {
+          verb = seg; sub(/^.* -X +/, "", verb); sub(/ .*$/, "", verb)
+          name = name ":" verb
+        }
+        out = out (out == "" ? "" : ";") name
+      }
+      return out
+    }
+
+    BEGIN {
+      # --- the curated Quick shortlist ---
+      while ((getline line < quickfile) > 0) {
+        if (line ~ /^#/ || line == "") continue
+        n = split(line, q, "\t")
+        if (n < 2 || q[1] == "table") continue
+        quick[q[1] "\t" q[2]] = 1
+      }
+      close(quickfile)
+    }
+
+    # --- live bindings ---
+    # havelive distinguishes "nothing is bound" from "we could not ask tmux".
+    # Running the Explorer outside a tmux server is legitimate (--dump, docs
+    # generation, CI), and there every row is reported as bound rather than as
+    # switched off — the honest answer when there is no server to consult.
+    FILENAME ~ /live$/ { livecmd[$1 "\t" $2] = $3; seenlive[$1 "\t" $2] = 1; havelive = 1; next }
+
+    # --- the registry ---
+    /^#/ { next }
+    $1 == "table" { next }
+    NF < 13 { next }
+    {
+      tbl = $1; key = $2; cmd = $3; desc = $4; cat = $5; origin = $6
+      rep = $7; minv = $8; displaces = $9; tags = $10; cond = $11
+      plug = $12; long = $13
+      k = tbl "\t" key
+
+      # Claim tracking happens BEFORE any view filter, because the Active view
+      # needs to know that a key IS registered in order to notice that what is
+      # bound to it right now is something else.
+      claimed[k] = 1
+      # Status is per ROW, not per key. A key with two conditional variants has
+      # exactly one of them in force, and calling both "active" because the key
+      # is bound would be the single most misleading thing this tool could say.
+      if (!havelive) status = "active"
+      else if (k in livecmd && signature(livecmd[k]) == signature(cmd)) {
+        status = "active"
+        matched[k] = 1
+      } else status = "off"
+
+      # The copy-mode table that mode-keys does not select is bound but
+      # unreachable. Treat it as switched off rather than as available.
+      if (modekeys != "" && (tbl == "copy-mode" || tbl == "copy-mode-vi")) {
+        wanted = (modekeys == "vi") ? "copy-mode-vi" : "copy-mode"
+        if (tbl != wanted) status = "off"
+      }
+
+      if (view == "quick" && (!(k in quick) || status != "active")) next
+      if (view == "active" && status != "active") next
+
+      rows[++nr] = catorder(cat) OFS cat OFS tbl OFS key OFS displaykey(tbl, key) \
+        OFS desc OFS origin OFS status OFS cmd OFS displaces OFS tags OFS cond \
+        OFS plug OFS long OFS rep OFS minv
+      next
+    }
+
+    END {
+      # Live bindings this registry does not account for. They are the whole
+      # reason the Active view reads the server instead of a file: plugin keys
+      # that exist only while a plugin is on, and anything you bound yourself.
+      #
+      # A key qualifies when it is either unknown to the registry, or known but
+      # currently bound to a command no registered variant of it matches.
+      if (view == "active" || view == "all") {
+        for (k in seenlive) {
+          if (matched[k]) continue
+          split(k, kp, "\t")
+          cmd = livecmd[k]
+          reason = (k in claimed) \
+            ? "Overrides the tmux-config binding for this key." \
+            : "Not part of this configuration - it comes from your local.conf or an active plugin."
+          rows[++nr] = 9 OFS "Local and plugin keys" OFS kp[1] OFS kp[2] \
+            OFS displaykey(kp[1], kp[2]) OFS ("Runs " humanise_cmd(cmd)) \
+            OFS "user" OFS "local" OFS cmd OFS "-" OFS "local override user plugin" \
+            OFS "-" OFS "-" OFS reason OFS "no" OFS "-"
+        }
+      }
+      for (i = 1; i <= nr; i++) print rows[i]
+    }
+  ' "$TMP/live" "$REGISTRY" | sort -t"$TAB" -k1,1n -k2,2 -k5,5
+}
+
+# ==============================================================================
+#  Terminal
+# ==============================================================================
+#  Raw mode so single keypresses act immediately. In raw mode the terminal no
+#  longer translates \n, so every line this script prints ends \r\n.
+
+STTY_SAVED=""
+tty_setup() {
+  [ -t 0 ] || return 0
+  STTY_SAVED="$(stty -g 2>/dev/null)" || STTY_SAVED=""
+  stty raw -echo 2>/dev/null
+  printf '\033[?25l'          # hide the cursor: it parks in distracting places
+}
+tty_restore() {
+  [ -n "$STTY_SAVED" ] || return 0
+  printf '\033[?25h\033[0m'
+  stty "$STTY_SAVED" 2>/dev/null
+  STTY_SAVED=""
+}
+
+B="$(printf '\033[1m')"; D="$(printf '\033[2m')"
+RV="$(printf '\033[7m')";  Z="$(printf '\033[0m')"
+
+# One keypress as a decimal byte value. Escape sequences (arrow keys) arrive as
+# 27 '[' 'A'..'D'; the follow-up read uses a 0.1s timeout so a bare Escape is
+# not mistaken for the start of one.
+readkey() {
+  c="$(dd bs=1 count=1 2>/dev/null | od -An -tu1 | tr -d ' \n')"
+  [ -n "$c" ] || { echo 113; return; }   # EOF behaves like q
+  if [ "$c" = 27 ]; then
+    stty min 0 time 1 2>/dev/null
+    rest="$(dd bs=1 count=2 2>/dev/null | tr -d '\0')"
+    stty min 1 time 0 2>/dev/null
+    case "$rest" in
+      '[A') echo 1000 ;;   # up
+      '[B') echo 1001 ;;   # down
+      '[C') echo 1002 ;;   # right
+      '[D') echo 1003 ;;   # left
+      '[5') dd bs=1 count=1 >/dev/null 2>&1; echo 1004 ;;  # page up
+      '[6') dd bs=1 count=1 >/dev/null 2>&1; echo 1005 ;;  # page down
+      '')   echo 27 ;;
+      *)    echo 27 ;;
+    esac
+    return
+  fi
+  echo "$c"
+}
+
+# ==============================================================================
+#  Rendering
+# ==============================================================================
+
+COLS=80
+LINES_=24
+# `stty size` asks the tty itself and is right even when TERM understates the
+# window — which it does inside a tmux popup, where terminfo reports the
+# terminal's default 80x24 rather than the popup's actual size. tput is the
+# fallback for the case where stdin is not a tty (--dump, CI).
+term_size() {
+  sz="$(stty size 2>/dev/null)"
+  LINES_="${sz% *}"; COLS="${sz#* }"
+  case "$COLS"   in ''|*[!0-9]*) COLS="$(tput cols 2>/dev/null)" ;; esac
+  case "$LINES_" in ''|*[!0-9]*) LINES_="$(tput lines 2>/dev/null)" ;; esac
+  case "$COLS"   in ''|*[!0-9]*) COLS=80 ;; esac
+  case "$LINES_" in ''|*[!0-9]*) LINES_=24 ;; esac
+  [ "$COLS" -lt 40 ] && COLS=40
+  [ "$LINES_" -lt 8 ] && LINES_=8
+}
+
+# Flatten rows into display lines, inserting a heading whenever the category
+# changes. Each line is  <kind>\t<rowindex>\t<text>  with kind H or R.
+flatten() {
+  awk -F"$TAB" -v OFS="$TAB" -v cols="$COLS" '
+    function pad(s, n,   r) { r = s; while (length(r) < n) r = r " "; return r }
+    function clip(s, n) { return (length(s) > n) ? substr(s, 1, n - 1) "…" : s }
+    {
+      if ($2 != lastcat) {
+        if (NR > 1) print "B", 0, ""
+        print "H", 0, toupper($2)
+        lastcat = $2
+      }
+      kw = 18
+      dw = cols - kw - 3
+      if (dw < 10) dw = 10
+      note = ""
+      if ($8 == "off")   note = "  [off]"
+      if ($8 == "local") note = "  [local]"
+      if ($7 == "tmux-override") note = "  [override]"
+      if ($7 == "tmux-enhanced") note = "  [+]"
+      print "R", NR, "  " pad(clip($5, kw), kw) " " clip($6 note, dw)
+    }
+  ' "$1"
+}
+
+draw() {
+  term_size
+  # Header 3 lines (title, search, blank) + footer 2 lines.
+  body=$((LINES_ - 5))
+  [ "$body" -lt 3 ] && body=3
+
+  total="$(wc -l < "$TMP/view" | tr -d ' ')"
+  [ "$total" -eq 0 ] && total=0
+
+  # Keep the cursor line on screen.
+  [ "$CURSOR" -ge "$total" ] && CURSOR=$((total - 1))
+  [ "$CURSOR" -lt 0 ] && CURSOR=0
+  [ "$CURSOR" -lt "$TOP" ] && TOP="$CURSOR"
+  [ "$CURSOR" -ge $((TOP + body)) ] && TOP=$((CURSOR - body + 1))
+  [ "$TOP" -lt 0 ] && TOP=0
+
+  out="$TMP/frame"
+  {
+    printf '\033[H\033[2J'
+    case "$VIEW" in
+      quick)  vlabel="Quick" ;;
+      active) vlabel="Active" ;;
+      *)      vlabel="All" ;;
+    esac
+    printf '%stmux-config keys%s   %s%s%s\r\n' "$B" "$Z" "$D" "$vlabel" "$Z"
+    if [ -n "$QUERY" ]; then
+      printf 'Search: %s%s%s   %s%d match(es)%s\r\n' "$B" "$QUERY" "$Z" "$D" "$MATCHES" "$Z"
+    else
+      printf 'Search: %s_%s\r\n' "$D" "$Z"
+    fi
+    printf '\r\n'
+
+    if [ "$total" -eq 0 ]; then
+      printf '  %sno bindings match%s\r\n' "$D" "$Z"
+    else
+      sed -n "$((TOP + 1)),$((TOP + body))p" "$TMP/view" \
+      | awk -F"$TAB" -v cur="$CURSOR" -v top="$TOP" -v B="$B" -v D="$D" -v RV="$RV" -v Z="$Z" '
+          {
+            idx = top + NR - 1
+            if ($1 == "H")      printf "%s%s%s\r\n", B, $3, Z
+            else if ($1 == "B") printf "\r\n"
+            else if (idx == cur) printf "%s%s%s\r\n", RV, $3, Z
+            else                 printf "%s\r\n", $3
+          }'
+    fi
+
+    # Pad so the footer sits at the bottom on a short list.
+    shown="$(sed -n "$((TOP + 1)),$((TOP + body))p" "$TMP/view" | wc -l | tr -d ' ')"
+    [ "$total" -eq 0 ] && shown=1
+    i="$shown"
+    while [ "$i" -lt "$body" ]; do printf '\r\n'; i=$((i + 1)); done
+
+    printf '%s%s%s\r\n' "$D" "$(printf '%*s' "$COLS" '' | tr ' ' '-')" "$Z"
+    printf '%s/ search   n/N next/prev   Enter details   a %s   q close%s' \
+      "$D" "$NEXTVIEW" "$Z"
+  } > "$out"
+  cat "$out"
+}
+
+# ------------------------------------------------------------------------------
+#  filter — apply the search query across every documented field
+# ------------------------------------------------------------------------------
+#  Fields searched, per spec: key, description, command, category, tags, origin,
+#  table and plugin. Plain case-insensitive substring matching — deterministic,
+#  explainable, and it finds "split", "zoom", "copy", "session" and "detach"
+#  because the registry carries tags for exactly that.
+filter() {
+  if [ -z "$QUERY" ]; then
+    cp "$TMP/rows" "$TMP/rows.f"
+  else
+    awk -F"$TAB" -v q="$QUERY" '
+      BEGIN { q = tolower(q) }
+      {
+        blob = tolower($3 " " $4 " " $5 " " $6 " " $7 " " $9 " " $11 " " $13 " " $2)
+        if (index(blob, q)) print
+      }' "$TMP/rows" > "$TMP/rows.f"
+  fi
+  MATCHES="$(wc -l < "$TMP/rows.f" | tr -d ' ')"
+  flatten "$TMP/rows.f" > "$TMP/view"
+}
+
+# ------------------------------------------------------------------------------
+#  detail — one binding, in full. Deliberately short (spec: no huge info page).
+# ------------------------------------------------------------------------------
+detail() {
+  line="$(sed -n "$((CURSOR + 1))p" "$TMP/view")"
+  kind="$(printf '%s' "$line" | cut -f1)"
+  [ "$kind" = "R" ] || return 0
+  idx="$(printf '%s' "$line" | cut -f2)"
+  row="$(sed -n "${idx}p" "$TMP/rows.f")"
+  [ -n "$row" ] || return 0
+
+  term_size
+  printf '\033[H\033[2J'
+  printf '%s' "$row" | awk -F"$TAB" -v B="$B" -v D="$D" -v Z="$Z" -v cols="$COLS" '
+    function wrap(label, text,   w, n, i, out, line, words) {
+      if (text == "-" || text == "") return
+      printf "%s%-12s%s", D, label, Z
+      w = cols - 14; if (w < 20) w = 20
+      n = split(text, words, " ")
+      line = ""
+      for (i = 1; i <= n; i++) {
+        if (line != "" && length(line) + 1 + length(words[i]) > w) {
+          printf "%s\r\n%12s", line, ""
+          line = words[i]
+        } else line = (line == "" ? words[i] : line " " words[i])
+      }
+      printf "%s\r\n", line
+    }
+    {
+      printf "%s%s%s\r\n\r\n", B, $5, Z
+      printf "%s\r\n\r\n", $6
+      wrap("Table",    $3)
+      wrap("Category", $2)
+      wrap("Origin",   origin_text($7))
+      wrap("Status",   status_text($8))
+      wrap("Runs",     $9)
+      if ($10 != "-") wrap("Displaces", $10)
+      if ($12 != "-") wrap("Only when", $12)
+      if ($13 != "-") wrap("Plugin",    $13)
+      if ($15 == "yes") wrap("Repeat", "yes - holds for the repeat-time window")
+      if ($16 != "-")  wrap("Since", "tmux " $16)
+      if ($14 != "-") { printf "\r\n"; wrap("Why", $14) }
+    }
+    function origin_text(o) {
+      if (o == "tmux")          return "tmux default"
+      if (o == "tmux-enhanced") return "tmux default, enhanced by tmux-config"
+      if (o == "tmux-override") return "tmux default displaced by tmux-config"
+      if (o == "tmux-config")   return "added by tmux-config"
+      if (o == "plugin")        return "from a plugin"
+      return "your own binding"
+    }
+    function status_text(s) {
+      if (s == "active") return "bound now"
+      if (s == "local")  return "bound now, from outside this configuration"
+      return "not bound - switched off by an option or a disabled plugin"
+    }'
+  printf '\r\n%s%s%s\r\n' "$D" "$(printf '%*s' "$COLS" '' | tr ' ' '-')" "$Z"
+  printf '%sany key to go back%s' "$D" "$Z"
+  readkey >/dev/null
+}
+
+# ------------------------------------------------------------------------------
+#  fzf — optional, never required (spec 18)
+# ------------------------------------------------------------------------------
+#  Enabled only when you ask for it AND fzf is installed. Everything above
+#  keeps working when it is not, which is the whole point.
+use_fzf() {
+  [ "$(tmux_q show -gv @cfg_key_explorer_fzf 2>/dev/null)" = "on" ] || return 1
+  command -v fzf >/dev/null 2>&1
+}
+
+run_fzf() {
+  build_rows "$VIEW" > "$TMP/rows"
+  awk -F"$TAB" '{ printf "%-18s  %s\n", $5, $6 }' "$TMP/rows" \
+    | fzf --no-sort --reverse --prompt="tmux keys > " \
+          --header="$(printf 'Enter to close   %s view' "$VIEW")" >/dev/null
+}
+
+# ==============================================================================
+#  Main
+# ==============================================================================
+
+case "${1:-}" in
+  --dump)
+    build_rows "${2:-all}"
+    exit 0
+    ;;
+  --help|-h)
+    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+    exit 0
+    ;;
+esac
+
+VIEW=quick
+QUERY=""
+CURSOR=0
+TOP=0
+MATCHES=0
+AUTOWIDE=0
+
+if use_fzf; then run_fzf; exit 0; fi
+
+term_size          # flatten() needs the width before the first frame is drawn
+build_rows "$VIEW" > "$TMP/rows"
+filter
+
+# Start on the first real row rather than the first heading.
+CURSOR="$(awk -F"$TAB" '$1=="R" { print NR - 1; exit }' "$TMP/view")"
+[ -n "$CURSOR" ] || CURSOR=0
+
+tty_setup
+
+while :; do
+  case "$VIEW" in
+    quick)  NEXTVIEW="active view" ;;
+    active) NEXTVIEW="all keys" ;;
+    *)      NEXTVIEW="quick view" ;;
+  esac
+
+  draw
+  k="$(readkey)"
+
+  case "$k" in
+    113|27)                 break ;;                      # q, Escape
+    106|1001) CURSOR=$((CURSOR + 1)) ;;                    # j, Down
+    107|1000) CURSOR=$((CURSOR - 1)) ;;                    # k, Up
+    6|1005)   CURSOR=$((CURSOR + 10)) ;;                   # C-f, PgDn
+    2|1004)   CURSOR=$((CURSOR - 10)) ;;                   # C-b, PgUp
+    103)      CURSOR=0; TOP=0 ;;                           # g
+    71)       # G — the LAST binding, not the last line. The view ends in a
+              # category heading or a blank separator as often as not, and
+              # parking the cursor on one highlights nothing and makes Enter
+              # do nothing.
+              CURSOR="$(awk -F"$TAB" '$1=="R" { last = NR - 1 } END { if (last != "") print last }' "$TMP/view")"
+              [ -n "$CURSOR" ] || CURSOR=0 ;;
+    13|10)    tty_restore; detail; tty_setup ;;            # Enter
+    47)                                                    # /
+      tty_restore
+      printf '\033[H\033[2J'
+      printf 'Search (empty clears): '
+      IFS= read -r QUERY
+      tty_setup
+      # Quick is a shortlist, so searching it would quietly answer "no such
+      # key" for keys that plainly exist — searching for "split" has to find
+      # every split binding, not the two that made the shortlist. So a search
+      # widens the view to Active, and clearing it hands Quick back.
+      if [ -n "$QUERY" ] && [ "$VIEW" = quick ]; then
+        VIEW=active; AUTOWIDE=1
+        build_rows "$VIEW" > "$TMP/rows"
+      elif [ -z "$QUERY" ] && [ "$AUTOWIDE" = 1 ]; then
+        VIEW=quick; AUTOWIDE=0
+        build_rows "$VIEW" > "$TMP/rows"
+      fi
+      filter
+      CURSOR="$(awk -F"$TAB" '$1=="R" { print NR - 1; exit }' "$TMP/view")"
+      [ -n "$CURSOR" ] || CURSOR=0
+      TOP=0
+      ;;
+    110)                                                   # n — next match
+      CURSOR="$(awk -F"$TAB" -v c="$CURSOR" '$1=="R" && NR-1 > c { print NR-1; exit }' "$TMP/view")"
+      [ -n "$CURSOR" ] || CURSOR="$(awk -F"$TAB" '$1=="R" { print NR-1; exit }' "$TMP/view")"
+      [ -n "$CURSOR" ] || CURSOR=0
+      ;;
+    78)                                                    # N — previous match
+      CURSOR="$(awk -F"$TAB" -v c="$CURSOR" '$1=="R" && NR-1 < c { last = NR-1 } END { if (last != "") print last }' "$TMP/view")"
+      [ -n "$CURSOR" ] || CURSOR=0
+      ;;
+    97)                                                    # a — cycle the view
+      AUTOWIDE=0
+      case "$VIEW" in
+        quick)  VIEW=active ;;
+        active) VIEW=all ;;
+        *)      VIEW=quick ;;
+      esac
+      build_rows "$VIEW" > "$TMP/rows"
+      filter
+      CURSOR="$(awk -F"$TAB" '$1=="R" { print NR - 1; exit }' "$TMP/view")"
+      [ -n "$CURSOR" ] || CURSOR=0
+      TOP=0
+      ;;
+  esac
+done
+
+tty_restore
+printf '\033[H\033[2J'

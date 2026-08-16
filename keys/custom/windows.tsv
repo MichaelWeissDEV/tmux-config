@@ -1,0 +1,2 @@
+table	key	command	short_description	category	origin	repeatable	min_tmux_version	displaces	tags	condition	plugin	long_description
+prefix	c	new-window -c "#{pane_current_path}"	New window in the current directory	Windows	tmux-enhanced	no	3.3	-	window new create open add tab	-	-	Same purpose as tmux's default; only the working directory of the new window changes. tmux would open it in your home directory.

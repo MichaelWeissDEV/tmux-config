@@ -87,7 +87,7 @@ is meaningful on a CI runner.
 2. The config loads and all modules applied.
 3. No key is bound twice in the same key table.
 4. No Ctrl-based key is intercepted globally
-   ([the hard rule](philosophy.md)).
+   ([the hard rule](../philosophy.md)).
 5. Every `@cfg_*` used by a module is defined in `00-options.conf`.
 6. The generated docs are in sync with the config.
 

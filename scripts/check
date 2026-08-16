@@ -12,7 +12,8 @@
 #    2. no accidental duplicate binding of the same key in the same table
 #    3. no Neovim-critical key is intercepted globally by default
 #    4. every @cfg_* referenced by a module is actually defined
-#    5. the generated docs are in sync with the config
+#    5. the key registry matches what a real tmux server actually binds
+#    6. the generated docs are in sync with the registry
 #
 #  Exit status: 0 clean, 1 on any failure.
 # ==============================================================================
@@ -52,6 +53,7 @@ cp -R "$ROOT/config" "$T/config" 2>/dev/null
 [ -d "$ROOT/terminals" ] && cp -R "$ROOT/terminals" "$T/terminals"
 [ -d "$ROOT/plugins" ] && cp -R "$ROOT/plugins" "$T/plugins"
 [ -d "$ROOT/scripts" ] && cp -R "$ROOT/scripts" "$T/scripts"
+[ -d "$ROOT/keys" ] && cp -R "$ROOT/keys" "$T/keys"
 sed "s|~/.config/tmux|$T|g; s|\$HOME/.config/tmux|$T|g" "$ROOT/tmux.conf" > "$T/tmux.conf"
 for f in "$T"/config/*.conf "$T"/capabilities/*.conf "$T"/terminals/*.conf; do
   [ -f "$f" ] || continue
@@ -127,7 +129,63 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 6. Generated docs in sync
+# 6. The registry describes the running server
+# ------------------------------------------------------------------------------
+#  This is the check that makes keys/ authoritative rather than decorative.
+#  A registry nobody verifies is documentation, and documentation drifts.
+#
+#  Two directions, and both matter:
+#
+#    forward   every binding the registry says should be active, given the
+#              shipped option defaults, is really bound on a live server
+#    reverse   every binding on that live server is accounted for by the
+#              registry — nothing is bound that nobody wrote down
+#
+#  The reverse direction is the one that catches real mistakes: a stray `bind`
+#  added to a module and never registered would pass every other check in this
+#  file, and would then be missing from the Explorer and from the docs.
+printf '\nRegistry matches the running server\n'
+if [ ! -f "$ROOT/keys/generated/keys.tsv" ]; then
+  bad "keys/generated/keys.tsv is missing — run ./scripts/gen-keys"
+else
+  # Synchronous: --socket makes the Explorer query this server directly.
+  # Going through `run-shell` would be asynchronous, and reading a half-written
+  # dump makes the assertions below pass while checking nothing.
+  "$T/scripts/key-explorer" --socket "$LSOCK" --dump active > "$T/active.tsv" 2>/dev/null
+  DUMP="$(cat "$T/active.tsv" 2>/dev/null)"
+  DUMP_N="$(printf '%s\n' "$DUMP" | grep -c . || true)"
+
+  # A stock config binds well over 200 keys. A dump far below that is a broken
+  # read, not a small config, and must not be mistaken for a clean result.
+  if [ "$DUMP_N" -lt 100 ]; then
+    bad "could not read the live key state (got $DUMP_N rows, expected 200+)"
+  else
+    # reverse — live bindings the registry does not explain
+    UNKNOWN="$(printf '%s\n' "$DUMP" | awk -F'\t' '$8=="local" { print $5 "  ->  " substr($9, 1, 60) }')"
+    if [ -n "$UNKNOWN" ]; then
+      bad "bound on the server but absent from keys/ — add them to the registry"
+      printf '%s\n' "$UNKNOWN" | sed 's/^/        /'
+    else
+      ok "every live binding is accounted for ($DUMP_N bindings)"
+    fi
+
+    # forward — registry rows that should be active but are not
+    MISSING="$(awk -F'\t' -v live="$T/active.tsv" '
+      BEGIN { while ((getline l < live) > 0) { split(l, f, "\t"); seen[f[3] "\t" f[4]] = 1 } }
+      NR > 4 && $6 != "tmux" && ($11 == "-" || $11 == "") {
+        if (!(($1 "\t" $2) in seen)) print $1 " " $2 "  (" $4 ")"
+      }' "$ROOT/keys/generated/keys.tsv")"
+    if [ -n "$MISSING" ]; then
+      bad "registered unconditionally but not bound on the server"
+      printf '%s\n' "$MISSING" | sed 's/^/        /'
+    else
+      ok "every unconditional registry binding is live"
+    fi
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# 7. Generated docs in sync
 # ------------------------------------------------------------------------------
 printf '\nGenerated docs\n'
 if [ -x "$ROOT/scripts/gen-options.py" ] && [ -f "$ROOT/docs/reference/options.md" ]; then
@@ -138,12 +196,28 @@ if [ -x "$ROOT/scripts/gen-options.py" ] && [ -f "$ROOT/docs/reference/options.m
     note "Regenerate: ./scripts/gen-options.py > docs/reference/options.md"
   fi
 fi
-if [ -x "$ROOT/scripts/gen-keybindings.sh" ] && [ -f "$ROOT/docs/keybindings.md" ]; then
-  if "$ROOT/scripts/gen-keybindings.sh" 2>/dev/null | diff -q - "$ROOT/docs/keybindings.md" >/dev/null 2>&1; then
-    ok "keybindings page is up to date"
+if [ -x "$ROOT/scripts/gen-keys" ]; then
+  if "$ROOT/scripts/gen-keys" --check >/dev/null 2>&1; then
+    ok "merged key registry is up to date"
   else
-    bad "docs/keybindings.md is stale"
-    note "Regenerate: ./scripts/gen-keybindings.sh > docs/keybindings.md"
+    bad "keys/generated/keys.tsv is stale"
+    note "Regenerate: ./scripts/gen-keys"
+  fi
+fi
+if [ -x "$ROOT/scripts/gen-docs" ]; then
+  if "$ROOT/scripts/gen-docs" --check >/dev/null 2>&1; then
+    ok "keybinding pages are up to date"
+  else
+    bad "docs/keybindings/*.md is stale"
+    note "Regenerate: ./scripts/gen-docs"
+  fi
+fi
+if [ -x "$ROOT/scripts/gen-upstream-keys" ]; then
+  if "$ROOT/scripts/gen-upstream-keys" --check >/dev/null 2>&1; then
+    ok "upstream snapshot matches this tmux"
+  else
+    note "no upstream snapshot for this tmux version yet (not a failure)"
+    note "Capture one: ./scripts/gen-upstream-keys"
   fi
 fi
 

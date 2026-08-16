@@ -48,27 +48,50 @@ theme:
         name: Switch to system preference
 
 nav:
-  - Home: index.md
-  - Installation: installation.md
+  - Introduction: index.md
   - Getting started:
-      - Configuration: configuration.md
-      - Keybindings: keybindings.md
-      - Theming: theming.md
-      - Recipes: recipes.md
-  - Portability:
-      - Capabilities: capabilities.md
-      - Neovim: neovim.md
-      - Plugins: plugins.md
-  - Under the hood:
+      - Installation: getting-started/installation.md
+      - Quick start: getting-started/quick-start.md
+  - Configuration:
+      - Defaults: configuration/index.md
+      - Options: reference/options.md
+      - Local overrides: configuration/local-overrides.md
+  - Keybindings:
+      - Quick reference: keybindings/quick.md
+      - Key Explorer: keybindings/key-explorer.md
+      - Complete keymap: keybindings/complete.md
+      - Copy mode: keybindings/copy-mode.md
+      - Mouse: keybindings/mouse.md
+  - tmux features:
+      - Sessions: tmux/sessions.md
+      - Windows: tmux/windows.md
+      - Panes: tmux/panes.md
+      - Layouts: tmux/layouts.md
+      - Buffers: tmux/buffers.md
+      - Status line: tmux/status-line.md
+  - Integration:
+      - Neovim: integration/neovim.md
+      - Clipboard: integration/clipboard.md
+      - SSH: integration/ssh.md
+  - Plugins:
+      - Available plugins: plugins/available.md
+      - Enabling plugins: plugins/enabling.md
+  - Customization:
+      - Themes: customization/themes.md
+      - Keybindings: customization/keybindings.md
+      - Status line: customization/status-line.md
+      - Recipes: customization/recipes.md
+  - Reference:
+      - Options: reference/options.md
+      - Complete keymap: keybindings/complete.md
+      - Capabilities: reference/capabilities.md
+      - Compatibility: reference/compatibility.md
+      - Troubleshooting: reference/troubleshooting.md
+      - Diagnostics: reference/diagnostics.md
+  - Development:
       - Philosophy: philosophy.md
       - Architecture: architecture.md
       - Publishing: publishing.md
-  - Help:
-      - Troubleshooting: troubleshooting.md
-      - Diagnostics: diagnostics.md
-  - Reference:
-      - Options: reference/options.md
-      - Compatibility: compatibility.md
 
 markdown_extensions:
   - abbr

@@ -36,7 +36,8 @@ The keybindings page and the options reference are **generated**. Never edit
 them by hand:
 
 ```bash
-./scripts/gen-keybindings.sh > docs/keybindings.md
+./scripts/gen-keys      # rebuild the merged key registry
+./scripts/gen-docs      # rebuild the keybinding pages
 ./scripts/gen-options.py > docs/reference/options.md
 ```
 
@@ -64,7 +65,7 @@ Two constraints are easy to trip over and both fail silently:
 ## Adding a plugin
 
 Plugins are vendored, never fetched at runtime. See
-[Plugins → Vendoring](docs/plugins.md#vendoring-a-new-plugin-maintainers).
+[Plugins → Vendoring](docs/plugins/available.md#vendoring-a-new-plugin-maintainers).
 A plugin needs a manifest entry, an adapter in `plugins/`, an option, and a
 line in `config/70-plugins.conf`.
 

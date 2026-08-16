@@ -1,0 +1,13 @@
+table	key	command	short_description	category	origin	repeatable	min_tmux_version	displaces	tags	condition	plugin	long_description
+prefix	|	split-window -h -c "#{pane_current_path}"	Split side by side	Panes	tmux-config	no	3.3	-	split pane vertical divider horizontal new right	-	-	Mnemonic partner of _ — the character looks like the split it makes. tmux's own % does the same thing.
+prefix	_	split-window -v -c "#{pane_current_path}"	Split stacked	Panes	tmux-config	no	3.3	-	split pane horizontal divider stacked new below	-	-	Mnemonic partner of |. Deliberately not bound to - , which tmux uses for delete-buffer.
+prefix	M-|	split-window -fh -c "#{pane_current_path}"	Split full height, side by side	Panes	tmux-config	no	3.3	-	split pane full height whole window wide	-	-	-
+prefix	M-_	split-window -fv -c "#{pane_current_path}"	Split full width, stacked	Panes	tmux-config	no	3.3	-	split pane full width whole window tall	-	-	-
+prefix	%	split-window -h -c "#{pane_current_path}"	Split side by side, in the current directory	Panes	tmux-enhanced	no	3.3	-	split pane vertical horizontal new right	-	-	Same purpose as tmux's default; only the working directory of the new pane changes.
+prefix	"	split-window -v -c "#{pane_current_path}"	Split stacked, in the current directory	Panes	tmux-enhanced	no	3.3	-	split pane horizontal stacked new below	-	-	Same purpose as tmux's default; only the working directory of the new pane changes.
+prefix	M-h	resize-pane -L 5	Resize the pane left	Panes	tmux-config	yes	3.3	-	resize pane grow shrink wider left size border	-	-	vi-shaped alternative to tmux's own prefix M-Left, which still works.
+prefix	M-j	resize-pane -D 5	Resize the pane down	Panes	tmux-config	yes	3.3	-	resize pane grow shrink taller down size border	-	-	vi-shaped alternative to tmux's own prefix M-Down, which still works.
+prefix	M-k	resize-pane -U 5	Resize the pane up	Panes	tmux-config	yes	3.3	-	resize pane grow shrink shorter up size border	-	-	vi-shaped alternative to tmux's own prefix M-Up, which still works.
+prefix	M-l	resize-pane -R 5	Resize the pane right	Panes	tmux-config	yes	3.3	-	resize pane grow shrink wider right size border	-	-	vi-shaped alternative to tmux's own prefix M-Right, which still works.
+prefix	!	break-pane -d	Break the pane into a new window	Panes	tmux-enhanced	no	3.3	-	break pane window extract move out detach	-	-	Same purpose as tmux's default; -d leaves you on the current window instead of following the new one.
+prefix	@	choose-window "join-pane -h -s '%%'"	Join a pane from another window	Panes	tmux-config	no	3.3	-	join pane merge move in absorb window	-	-	-

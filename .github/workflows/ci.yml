@@ -35,6 +35,9 @@ jobs:
       - name: Static checks
         run: ./scripts/check
 
+      - name: Key conflicts
+        run: ./scripts/check-key-conflicts
+
       - name: Behaviour tests
         run: ./tests/run
 
@@ -75,6 +78,10 @@ jobs:
         shell: sh
         run: ./scripts/check
 
+      - name: Key conflicts
+        shell: sh
+        run: ./scripts/check-key-conflicts
+
       - name: Behaviour tests
         shell: sh
         run: ./tests/run
@@ -93,14 +100,78 @@ jobs:
       - name: Build docs (strict — broken links fail)
         run: mkdocs build --strict
 
-      # The keybindings and options pages are generated. If a contributor
-      # changed the config without regenerating them, the published docs would
-      # silently describe something that no longer exists.
+      # The keymap and options pages are generated from the registry. If a
+      # contributor changed a binding without regenerating them, the published
+      # docs would silently describe something that no longer exists.
       - name: Install tmux for generator check
         run: sudo apt-get update && sudo apt-get install -y tmux
-      - name: Generated docs are in sync
+      - name: Generated files are in sync
         run: |
-          ./scripts/gen-options.py > /tmp/options.md
-          ./scripts/gen-keybindings.sh > /tmp/keys.md
-          diff -u docs/reference/options.md /tmp/options.md
-          diff -u docs/keybindings.md /tmp/keys.md
+          ./scripts/gen-options.py > docs/reference/options.md
+          ./scripts/gen-keys
+          ./scripts/gen-docs
+          git diff --exit-code -- docs keys
+
+  # ---------------------------------------------------------------------------
+  # Upstream keymap snapshots.
+  #
+  # keys/upstream/ must come from tmux itself, never from a cheat sheet or from
+  # memory — so the only way to add a version is to run that version and ask it.
+  # This job builds each supported tmux from source and captures its keymap.
+  #
+  # A committed snapshot is verified byte for byte. A version with no snapshot
+  # yet uploads one as an artifact for a maintainer to commit, and does not fail
+  # the build: a missing snapshot is a gap in coverage, not a broken config.
+  #
+  # This is also what makes `scripts/check-key-conflicts` meaningful over time.
+  # It asserts that prefix H — the Key Explorer — is free in EVERY captured
+  # version, so each snapshot added here widens that guarantee automatically.
+  # ---------------------------------------------------------------------------
+  upstream-keys:
+    name: tmux ${{ matrix.tmux }} keymap
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tmux: ["3.3a", "3.4", "3.5a", "3.6"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build tmux ${{ matrix.tmux }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libevent-dev libncurses-dev build-essential bison pkg-config
+          curl -fsSL -o tmux.tar.gz \
+            "https://github.com/tmux/tmux/releases/download/${{ matrix.tmux }}/tmux-${{ matrix.tmux }}.tar.gz"
+          tar xzf tmux.tar.gz
+          cd "tmux-${{ matrix.tmux }}"
+          ./configure --prefix="$HOME/.local" && make -j"$(nproc)" && make install
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Capture the keymap
+        run: |
+          tmux -V
+          ./scripts/gen-upstream-keys
+
+      - name: Compare with the committed snapshot
+        run: |
+          if git diff --quiet -- keys/upstream; then
+            echo "snapshot for tmux ${{ matrix.tmux }} is current"
+          elif git status --porcelain -- keys/upstream | grep -q '^??'; then
+            echo "::notice::No snapshot for tmux ${{ matrix.tmux }} yet - see the artifact."
+          else
+            echo "::error::The committed snapshot for tmux ${{ matrix.tmux }} is stale."
+            git diff -- keys/upstream
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keymap-${{ matrix.tmux }}
+          path: keys/upstream/
+          if-no-files-found: error
+
+      # The registry rules must hold against every version we have captured,
+      # not only against the newest one.
+      - name: Key conflicts against this version
+        run: ./scripts/check-key-conflicts

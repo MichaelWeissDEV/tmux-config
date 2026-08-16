@@ -1,0 +1,60 @@
+# tmux-config Quick Reference — hand-curated, machine-validated.
+#
+# This is the ONE list in this repository that is chosen by a human: the keys
+# worth knowing on day one, in the order a newcomer meets them. Everything else
+# about keys is generated.
+#
+# Curation is not a licence to drift. Every (table, key) below must exist in
+# keys/generated/keys.tsv, and scripts/check-key-conflicts fails the build if
+# one does not — so a key removed from the config cannot survive here.
+#
+# It feeds the Key Explorer's opening view and docs/keybindings/quick.md.
+table	key
+prefix	?
+prefix	H
+prefix	R
+prefix	:
+prefix	g
+prefix	b
+prefix	C-k
+prefix	s
+prefix	d
+prefix	$
+prefix	(
+prefix	)
+prefix	c
+prefix	n
+prefix	p
+prefix	Tab
+prefix	,
+prefix	&
+prefix	w
+prefix	C-h
+prefix	C-l
+root	M-1
+prefix	|
+prefix	_
+prefix	h
+prefix	j
+prefix	k
+prefix	l
+prefix	z
+prefix	x
+prefix	!
+prefix	M-h
+prefix	M-l
+prefix	;
+prefix	o
+prefix	Space
+prefix	M-1
+prefix	M-5
+prefix	[
+prefix	C-f
+copy-mode-vi	v
+copy-mode-vi	C-v
+copy-mode-vi	y
+copy-mode-vi	q
+prefix	]
+prefix	=
+prefix	#
+prefix	-

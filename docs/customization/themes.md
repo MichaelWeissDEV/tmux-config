@@ -109,7 +109,7 @@ register it in `config/50-theme.conf`:
     Because `source-file` does not expand formats — `source-file
     "themes/#{@cfg_theme}.conf"` looks up a directory literally named
     `#{@cfg_theme}`. The chain is verbose but resolves at parse time and costs
-    no shell forks. See [Architecture](architecture.md#why-the-theme-loader-looks-like-that).
+    no shell forks. See [Architecture](../architecture.md#why-the-theme-loader-looks-like-that).
 
 ---
 
@@ -147,7 +147,7 @@ set -g window-status-current-format \
 
 !!! warning "Check your locale before relying on any non-ASCII glyph"
     Without a UTF-8 locale, tmux replaces these characters with `_`. See
-    [Troubleshooting](troubleshooting.md#status-bar-shows-underscores).
+    [Troubleshooting](../reference/troubleshooting.md#status-bar-shows-underscores).
 
 ---
 

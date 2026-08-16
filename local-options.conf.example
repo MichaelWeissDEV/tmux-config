@@ -1,0 +1,67 @@
+# ==============================================================================
+#  local-options.conf — YOUR settings
+# ==============================================================================
+#
+#  Copy this file to `local-options.conf` (drop the `.example`) and change what
+#  you like. It is not tracked by git, so it survives `git pull`.
+#
+#  WHY THIS FILE AND NOT local.conf
+#  --------------------------------
+#  tmux evaluates `%if` at PARSE time — when a file is read, before any line of
+#  it has run. The modules in `config/` branch on your settings that way.
+#
+#  This file is sourced immediately after the shipped defaults and BEFORE any
+#  module, so a value you set here is the value every `%if` sees.
+#
+#  `local.conf` is sourced LAST, which is right for raw tmux commands and your
+#  own bindings, but too late to change an `@cfg_*` that a module already read.
+#  Setting `@cfg_theme` there changes the variable and nothing else.
+#
+#      changing an @cfg_* value   ->  this file
+#      adding bindings or options ->  local.conf
+#
+#  Every option, with its accepted values, is in config/00-options.conf and at
+#  https://tmux-config.readthedocs.io/en/latest/reference/options/
+#
+#  Reload with `prefix + R` after editing.
+# ==============================================================================
+
+
+# ------------------------------------------------------------------------------
+#  A few of the most commonly changed. Uncomment what you want.
+# ------------------------------------------------------------------------------
+
+# The prefix key. C-b is tmux's own; C-a is the screen-style choice, but it
+# takes over "jump to start of line" in every shell inside your panes.
+# set -g @cfg_prefix "C-a"
+
+# Colour scheme.
+#   catppuccin-mocha | catppuccin-latte | tokyonight | nord | gruvbox-dark
+#   rose-pine | custom
+# set -g @cfg_theme "nord"
+
+# Status bar.
+# set -g @cfg_status_position "top"
+# set -g @cfg_status_style    "minimal"
+
+# Alt+1..9 to jump to a window with no prefix. On by default. Turn it off if
+# you use a terminal browser or a TUI that wants those keys.
+# set -g @cfg_alt_window_keys "off"
+
+# vi-style prefix+h/j/k/l for panes. Turning this off restores tmux's own
+# `prefix l` (last-window).
+# set -g @cfg_vi_pane_keys "off"
+
+# Copy mode key style. Affects copy mode ONLY — not Neovim, not your shell.
+# set -g @cfg_mode_keys "emacs"
+
+# Stay in copy mode after yanking instead of returning to the prompt.
+# set -g @cfg_copy_stays_in_mode "on"
+
+# Let the Key Explorer (prefix + H) use fzf when it is installed. Purely a
+# convenience — the Explorer works the same without it.
+# set -g @cfg_key_explorer_fzf "on"
+
+# Plugins. All off by default; the master switch must be on as well.
+# set -g @cfg_plugins          "on"
+# set -g @cfg_plugin_resurrect "on"

@@ -8,7 +8,7 @@
     ./scripts/gen-options.py > docs/reference/options.md
     ```
 
-Every option below is set in [`config/00-options.conf`](../configuration.md). Change a value there, or override it in `local.conf`, then press ++ctrl+b++ ++r++.
+Every option below is set in [`config/00-options.conf`](../configuration/index.md). Change a value there, or override it in `local.conf`, then press ++ctrl+b++ ++r++.
 
 ## All options at a glance
 
@@ -27,6 +27,7 @@ Every option below is set in [`config/00-options.conf`](../configuration.md). Ch
 | [`@cfg_vi_pane_keys`](#cfg-vi-pane-keys) | `on` | `on` · `off` |
 | [`@cfg_alt_window_keys`](#cfg-alt-window-keys) | `on` | `on` · `off` |
 | [`@cfg_plugin_navigator`](#cfg-plugin-navigator) | `off` | `on` · `off` |
+| [`@cfg_key_explorer_fzf`](#cfg-key-explorer-fzf) | `off` | `on` · `off` |
 | [`@cfg_mode_keys`](#cfg-mode-keys) | `vi` | `vi` · `emacs` |
 | [`@cfg_system_clipboard`](#cfg-system-clipboard) | `on` | `on` · `off` |
 | [`@cfg_osc52`](#cfg-osc52) | `on` | `on` · `off` · `external` |
@@ -200,8 +201,20 @@ set -g @cfg_plugin_navigator "off"
 
 Seamless pane<->split navigation with Ctrl+hjkl shared between tmux and
 Neovim. Requires the christoomey/vim-tmux-navigator plugin on the Neovim side.
-See docs/plugins.md#neovim-integration — turning this on without the Neovim
+See docs/plugins/available.md#neovim-integration — turning this on without the Neovim
 half will make Ctrl+hjkl do nothing useful inside Neovim.
+
+### `@cfg_key_explorer_fzf` { #cfg-key-explorer-fzf }
+
+```tmux
+set -g @cfg_key_explorer_fzf "off"
+```
+
+**Accepted values:** `on` · `off`
+
+Let the Key Explorer (prefix + H) use fzf for its search, when fzf is
+installed. This is a convenience, never a requirement: with this off, or with
+fzf missing, the Explorer uses its own built-in search and behaves the same.
 
 ## Copy mode & clipboard
 
@@ -238,7 +251,7 @@ set -g @cfg_osc52 "on"
 Send copied text to your *local* terminal via OSC 52 escape sequences.
 This is what makes copying work when tmux runs on a remote host over SSH.
 Your terminal emulator must support OSC 52 (most modern ones do; see
-docs/troubleshooting.md#clipboard for a compatibility list).
+docs/reference/troubleshooting.md#clipboard for a compatibility list).
 
 ### `@cfg_copy_stays_in_mode` { #cfg-copy-stays-in-mode }
 
@@ -304,7 +317,7 @@ set -g @cfg_theme "catppuccin-mocha"
 **Accepted values:** `catppuccin-mocha` · `catppuccin-latte` · `tokyonight` · `nord` · `gruvbox-dark` · `rose-pine` · `custom`
 
 Colour scheme. Files live in config/themes/.
-Adding your own is a 20-line file — see docs/theming.md.
+Adding your own is a 20-line file — see docs/customization/themes.md.
 
 ### `@cfg_status_position` { #cfg-status-position }
 
@@ -327,7 +340,7 @@ PERFORMANCE: this is the single most important number in this file. Every
 refresh re-renders the bar, and if you add a `#(shell command)` to the status
 it forks a process at this interval, on every session. 5 is comfortable.
 Only go to 1 if you add a seconds-precision clock, and never combine 1 with
-`#()`. See docs/configuration.md#status-bar-performance.
+`#()`. See docs/configuration/index.md#status-bar-performance.
 
 ### `@cfg_status_style` { #cfg-status-style }
 
@@ -440,7 +453,7 @@ Move between Neovim splits and tmux panes with one set of keys
 (Ctrl-h/j/k/l). Needs the Neovim-side plugin as well.
 WARNING: this is the only shipped plugin that intercepts application input.
 It binds Ctrl-hjkl globally and forwards them when the pane runs vim/nvim.
-`scripts/check` reports that interception — correctly. See docs/neovim.md.
+`scripts/check` reports that interception — correctly. See docs/integration/neovim.md.
 
 ### `@cfg_plugin_open` { #cfg-plugin-open }
 

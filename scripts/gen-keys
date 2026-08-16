@@ -1,0 +1,238 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  gen-keys — merge upstream + custom registries into keys/generated/keys.tsv
+# ==============================================================================
+#
+#  Usage:  ./scripts/gen-keys            write keys/generated/keys.tsv
+#          ./scripts/gen-keys --stdout   print instead of writing
+#          ./scripts/gen-keys --check    fail if the generated file is stale
+#
+#  The merged file is what the Key Explorer and the generated docs read. It is
+#  produced once, offline, and committed — so opening the Explorer costs a
+#  single file read, never a scan of this repository (see rule 19: nothing
+#  heavy at runtime).
+#
+#  MERGE RULES
+#  -----------
+#    * An upstream binding no custom file touches is emitted as origin=tmux,
+#      with tmux's own description.
+#    * A custom binding on a key tmux leaves free is emitted as written.
+#    * A custom binding on a key tmux already uses REPLACES the upstream row,
+#      and the upstream command is recorded in `displaces` so the Explorer can
+#      show what was given up. Whether that replacement is legitimate is not
+#      decided here — scripts/check-key-conflicts is the judge.
+#
+#  Category and tags for upstream rows are DERIVED, by a fixed table below,
+#  from the tmux command and tmux's own description. Nothing is invented and
+#  nothing is hand-written: with 275 upstream bindings, a hand-maintained copy
+#  would be wrong within a release.
+# ==============================================================================
+
+set -eu
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LC_ALL=C
+export LC_ALL
+
+MODE=write
+case "${1:-}" in
+  --stdout) MODE=stdout ;;
+  --check)  MODE=check ;;
+  "")       ;;
+  *) printf 'usage: %s [--stdout|--check]\n' "$0" >&2; exit 2 ;;
+esac
+
+# The floor this project supports. Used as min_tmux_version for any binding
+# already present in the OLDEST snapshot we hold — see the note below.
+MIN_SUPPORTED=3.3
+
+UPSTREAM_DIR="$ROOT/keys/upstream"
+CUSTOM_DIR="$ROOT/keys/custom"
+OUT="$ROOT/keys/generated/keys.tsv"
+
+set -- "$UPSTREAM_DIR"/tmux-*.tsv
+[ -f "$1" ] || { printf 'no upstream snapshot in %s — run ./scripts/gen-upstream-keys\n' "$UPSTREAM_DIR" >&2; exit 1; }
+SNAPSHOTS="$*"
+SNAPSHOT_COUNT=$#
+
+# Version-sorted, so the first is the oldest snapshot we hold.
+OLDEST="$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | head -n1)"
+NEWEST="$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | tail -n1)"
+
+emit() {
+  # ---------------------------------------------------------------------------
+  # Pass 1 — every (table,key) and the oldest snapshot it appears in.
+  # ---------------------------------------------------------------------------
+  for f in $SNAPSHOTS; do
+    v="$(basename "$f" .tsv | sed 's/^tmux-//')"
+    awk -F'\t' -v v="$v" 'NR>4 && NF>=5 { print $1 "\t" $2 "\t" v }' "$f"
+  done | sort -t"$(printf '\t')" -k1,2 -k3,3V \
+       | awk -F'\t' '!seen[$1"\t"$2]++ { print }' > "$TMPD/firstseen"
+
+  # The newest snapshot defines the CURRENT upstream keymap. Older-only keys
+  # are bindings tmux has since removed; they are not emitted as active.
+  awk -F'\t' 'NR>4 && NF>=5' "$UPSTREAM_DIR/tmux-$NEWEST.tsv" > "$TMPD/upstream"
+
+  cat "$CUSTOM_DIR"/*.tsv | awk -F'\t' 'NF==13 && $1!="table"' > "$TMPD/custom"
+
+  awk -F'\t' -v OFS='\t' \
+      -v min_supported="$MIN_SUPPORTED" -v oldest="$OLDEST" \
+      -v newest="$NEWEST" -v snapcount="$SNAPSHOT_COUNT" '
+    # -------------------------------------------------------------------------
+    #  Category — fixed, ordered rules. Three things make this less trivial
+    #  than matching the first word:
+    #
+    #    1. The interesting command is often WRAPPED. `prefix $` is
+    #       `command-prompt -I "#S" { rename-session "%%" }` — the first word
+    #       says nothing, the word that matters is inside the braces. So the
+    #       whole command is searched, not just its head.
+    #    2. Order therefore matters a lot. `prefix ]` is `paste-buffer`, and
+    #       `prefix x` mentions kill-pane inside a confirmation prompt; buffer
+    #       and pane rules have to fire before the broader ones.
+    #    3. The two display-menus (`prefix <` and `prefix >`) mention nearly
+    #       every command tmux has. Only their title says which is which, so
+    #       they are settled first and separately.
+    # -------------------------------------------------------------------------
+    function category(cmd, table,   c) {
+      # Everything in the copy-mode tables is copy mode, whatever it runs.
+      if (table == "copy-mode" || table == "copy-mode-vi") return "Copy mode"
+
+      c = cmd
+      # A context menu mentions nearly every command tmux has, so it must be
+      # settled before any of the token rules below get a chance to match one.
+      # Only the menu title says which menu it is.
+      if (c ~ /display-menu/) {
+        if (c ~ /window_index/) return "Windows"
+        if (c ~ /pane_index/)   return "Panes"
+        return "General"
+      }
+
+      if (c ~ /(^|[ {])(choose-buffer|delete-buffer|list-buffers|paste-buffer|save-buffer|set-buffer|show-buffer)([ }]|$)/) return "Buffers"
+      if (c ~ /(^|[ {])(copy-mode)([ }]|$)/ || c ~ /send-keys -X/) return "Copy mode"
+      if (c ~ /(^|[ {])(select-layout|next-layout|previous-layout)([ }]|$)/) return "Layouts"
+      if (c ~ /(^|[ {])(source-file|customize-mode)([ }]|$)/) return "Configuration"
+      if (c ~ /choose-tree -Zw/) return "Windows"
+      if (c ~ /(^|[ {])(split-window|select-pane|resize-pane|break-pane|join-pane|swap-pane|kill-pane|display-panes|rotate-window|last-pane|new-pane|pipe-pane|respawn-pane|clear-history)([ }]|$)/) return "Panes"
+      if (c ~ /(^|[ {])(select-window|new-window|rename-window|kill-window|find-window|swap-window|move-window|last-window|next-window|previous-window|link-window|unlink-window|respawn-window)([ }]|$)/) return "Windows"
+      if (c ~ /(^|[ {])(switch-client|detach-client|new-session|rename-session|kill-session|choose-client|choose-session|suspend-client|choose-tree|lock-client|lock-server)([ }]|$)/) return "Sessions"
+      return "General"
+    }
+
+    # -------------------------------------------------------------------------
+    #  Tags — derived from the tmux command and tmux own description, so that
+    #  searching "zoom", "detach" or "split" finds the upstream binding without
+    #  anyone maintaining synonyms for 275 keys. Deterministic, no cleverness.
+    # -------------------------------------------------------------------------
+    function tags(cmd, desc,   s, n, i, w, out, seen2) {
+      s = tolower(cmd " " desc)
+      gsub(/[^a-z0-9]+/, " ", s)
+      n = split(s, parts, " ")
+      out = ""
+      for (i = 1; i <= n; i++) {
+        w = parts[i]
+        if (length(w) < 2) continue
+        if (w ~ /^(the|a|an|to|in|of|for|and|or|on|if|is|it|by|with|from|this|that|then|send|keys|option|set|glob|zs|zw|z|s|w|d|p|n|l|r|u|e|f|h|v|x|t|m)$/) continue
+        if (seen2[w]++) continue
+        out = out (out == "" ? "" : " ") w
+      }
+      return out == "" ? "-" : out
+    }
+
+    function dash(v) { return (v == "" ? "-" : v) }
+
+    # -------------------------------------------------------------------------
+    FILENAME ~ /firstseen$/ { first[$1 "\t" $2] = $3; next }
+
+    FILENAME ~ /upstream$/ {
+      k = $1 "\t" $2
+      up_rep[k] = $3; up_cmd[k] = $4; up_desc[k] = $5
+      up_order[++nup] = k
+      next
+    }
+
+    FILENAME ~ /custom$/ {
+      # A key may carry several custom rows guarded by different conditions
+      # (y behaves differently per @cfg_copy_stays_in_mode). They are distinct
+      # bindings, so they are kept apart by condition, not collapsed.
+      k = $1 "\t" $2
+      # An UNCONDITIONAL custom binding replaces the upstream one outright.
+      # A conditional one does not: when its @cfg_ option says otherwise, the
+      # tmux default is what you actually get, so the upstream row has to stay
+      # in the registry to describe that case. `prefix l` is the clearest
+      # example — vi pane keys on, it selects a pane; off, it is last-window,
+      # and both facts belong in the Explorer.
+      if ($11 == "-" || $11 == "") custom_keys[k] = 1
+      cn++
+      c_tbl[cn]=$1; c_key[cn]=$2; c_cmd[cn]=$3; c_desc[cn]=$4; c_cat[cn]=$5
+      c_org[cn]=$6; c_rep[cn]=$7; c_min[cn]=$8; c_dis[cn]=$9; c_tag[cn]=$10
+      c_cond[cn]=$11; c_plug[cn]=$12; c_long[cn]=$13
+      next
+    }
+
+    END {
+      # --- custom rows ------------------------------------------------------
+      for (i = 1; i <= cn; i++) {
+        k = c_tbl[i] "\t" c_key[i]
+        dis = c_dis[i]
+        # The registry may leave `displaces` at "-"; if tmux does bind this key
+        # upstream, fill it in from the snapshot rather than trusting the file.
+        if (k in up_cmd) dis = up_cmd[k]
+        print c_tbl[i], c_key[i], c_cmd[i], c_desc[i], c_cat[i], c_org[i], \
+              c_rep[i], c_min[i], dash(dis), c_tag[i], c_cond[i], c_plug[i], c_long[i]
+      }
+
+      # --- upstream rows not claimed by a custom binding --------------------
+      for (i = 1; i <= nup; i++) {
+        k = up_order[i]
+        if (k in custom_keys) continue
+        split(k, kp, "\t")
+
+        # min_tmux_version: if the binding is already in the OLDEST snapshot we
+        # hold, we have no evidence it is newer than the floor this project
+        # supports, so we say so. Only a binding that first shows up in a later
+        # snapshot gets that later version. Discriminating properly needs more
+        # than one snapshot — gen-keys warns when it only has one.
+        mv = (first[k] == oldest) ? min_supported : first[k]
+
+        print kp[1], kp[2], up_cmd[k], up_desc[k], category(up_cmd[k], kp[1]), "tmux", \
+              up_rep[k], mv, "-", tags(up_cmd[k], up_desc[k]), "-", "-", "-"
+      }
+    }
+  ' "$TMPD/firstseen" "$TMPD/upstream" "$TMPD/custom" \
+    | sort -t"$(printf '\t')" -k1,1 -k2,2
+}
+
+TMPD="$(mktemp -d)"
+trap 'rm -rf "$TMPD"' EXIT
+
+header() {
+  printf '# tmux-config merged key registry — GENERATED, do not edit\n'
+  printf '# regenerate with: ./scripts/gen-keys\n'
+  printf '# upstream snapshots: %s\n' "$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | tr '\n' ' ' | sed 's/ $//')"
+  printf 'table\tkey\tcommand\tdescription\tcategory\torigin\trepeatable\tmin_tmux_version\tdisplaces\ttags\tcondition\tplugin\tlong_description\n'
+}
+
+case "$MODE" in
+  stdout) header; emit ;;
+  check)
+    [ -f "$OUT" ] || { printf 'missing %s — run ./scripts/gen-keys\n' "$OUT" >&2; exit 1; }
+    { header; emit; } | diff -u "$OUT" - >/dev/null && {
+      printf 'keys/generated/keys.tsv is up to date\n'
+    } || {
+      printf 'keys/generated/keys.tsv is stale — run ./scripts/gen-keys\n' >&2
+      { header; emit; } | diff -u "$OUT" - >&2 || true
+      exit 1
+    }
+    ;;
+  write)
+    mkdir -p "$ROOT/keys/generated"
+    { header; emit; } > "$OUT"
+    printf 'wrote %s (%d bindings)\n' "${OUT#"$ROOT"/}" "$(($(wc -l < "$OUT") - 4))"
+    if [ "$SNAPSHOT_COUNT" -lt 2 ]; then
+      printf 'note: only one upstream snapshot (tmux %s) is present, so every\n' "$OLDEST"
+      printf '      upstream binding is reported as min_tmux_version %s — the floor this\n' "$MIN_SUPPORTED"
+      printf '      project supports, not a captured fact. Add more snapshots by running\n'
+      printf '      ./scripts/gen-upstream-keys under other tmux versions.\n'
+    fi
+    ;;
+esac

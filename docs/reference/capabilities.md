@@ -62,7 +62,7 @@ flowchart TD
 ```
 
 Themes name **roles**, not raw colours, so the same theme file works at every
-depth — see [Theming](theming.md).
+depth — see [Theming](../customization/themes.md).
 
 ---
 
@@ -107,7 +107,7 @@ Two independent paths, chosen from the detected platform:
 
 An empty `copy-command` is a valid outcome, not a failure: copying still works
 through OSC 52 and tmux's own buffers. See
-[Clipboard](configuration.md#copy-mode-clipboard).
+[Clipboard](../configuration/index.md#copy-mode-clipboard).
 
 ---
 

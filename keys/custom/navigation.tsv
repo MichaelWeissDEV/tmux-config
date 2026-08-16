@@ -1,0 +1,19 @@
+table	key	command	short_description	category	origin	repeatable	min_tmux_version	displaces	tags	condition	plugin	long_description
+prefix	h	select-pane -L	Select the pane to the left	Panes	tmux-config	no	3.3	-	pane left west focus move navigate	@cfg_vi_pane_keys=on	-	-
+prefix	j	select-pane -D	Select the pane below	Panes	tmux-config	no	3.3	-	pane down south focus move navigate	@cfg_vi_pane_keys=on	-	-
+prefix	k	select-pane -U	Select the pane above	Panes	tmux-config	no	3.3	-	pane up north focus move navigate	@cfg_vi_pane_keys=on	-	-
+prefix	l	select-pane -R	Select the pane to the right	Panes	tmux-override	no	3.3	last-window	pane right east focus move navigate	@cfg_vi_pane_keys=on	-	Completes the vi-style h/j/k/l pane row, which is why this one key displaces a default. tmux binds l to last-window; that is still available on prefix Tab, which this config adds for exactly this reason.
+prefix	C-h	previous-window	Previous window	Windows	tmux-config	yes	3.3	-	window previous back prev left	-	-	-
+prefix	C-l	next-window	Next window	Windows	tmux-config	yes	3.3	-	window next forward right	-	-	-
+prefix	Tab	last-window	Jump to the last used window	Windows	tmux-config	no	3.3	-	window last previous toggle alternate back	-	-	Restores the last-window behaviour that prefix l displaces. tmux also keeps it on prefix l when @cfg_vi_pane_keys is off.
+prefix	M-<	swap-window -d -t -1	Move the current window left	Windows	tmux-config	yes	3.3	-	window move swap reorder left shift	-	-	Alt-prefixed so tmux's own < (the window menu) keeps working.
+prefix	M->	swap-window -d -t +1	Move the current window right	Windows	tmux-config	yes	3.3	-	window move swap reorder right shift	-	-	Alt-prefixed so tmux's own > (the pane menu) keeps working.
+root	M-1	select-window -t :=1	Go to window 1	Windows	tmux-config	no	3.3	-	window select jump switch number 1	@cfg_alt_window_keys=on	-	-
+root	M-2	select-window -t :=2	Go to window 2	Windows	tmux-config	no	3.3	-	window select jump switch number 2	@cfg_alt_window_keys=on	-	-
+root	M-3	select-window -t :=3	Go to window 3	Windows	tmux-config	no	3.3	-	window select jump switch number 3	@cfg_alt_window_keys=on	-	-
+root	M-4	select-window -t :=4	Go to window 4	Windows	tmux-config	no	3.3	-	window select jump switch number 4	@cfg_alt_window_keys=on	-	-
+root	M-5	select-window -t :=5	Go to window 5	Windows	tmux-config	no	3.3	-	window select jump switch number 5	@cfg_alt_window_keys=on	-	-
+root	M-6	select-window -t :=6	Go to window 6	Windows	tmux-config	no	3.3	-	window select jump switch number 6	@cfg_alt_window_keys=on	-	-
+root	M-7	select-window -t :=7	Go to window 7	Windows	tmux-config	no	3.3	-	window select jump switch number 7	@cfg_alt_window_keys=on	-	-
+root	M-8	select-window -t :=8	Go to window 8	Windows	tmux-config	no	3.3	-	window select jump switch number 8	@cfg_alt_window_keys=on	-	-
+root	M-9	select-window -t :=9	Go to window 9	Windows	tmux-config	no	3.3	-	window select jump switch number 9	@cfg_alt_window_keys=on	-	-

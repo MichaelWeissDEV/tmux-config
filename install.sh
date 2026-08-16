@@ -99,14 +99,14 @@ if ! command -v tmux >/dev/null 2>&1; then
   say "  Debian/Ubuntu: sudo apt install tmux"
   say "  Fedora:       sudo dnf install tmux"
   say "  Arch:         sudo pacman -S tmux"
-  say "  Windows:      tmux does not run natively — use WSL2. See docs/installation.md"
+  say "  Windows:      tmux does not run natively — use WSL2. See docs/getting-started/installation.md"
   exit 1
 fi
 
 VERSION="$(tmux -V | sed 's/[^0-9.]//g')"
 if [ "$(printf '%s\n3.3\n' "$VERSION" | sort -V | head -n1)" != "3.3" ]; then
   say "Found tmux $VERSION, but this config needs 3.3 or newer."
-  say "See docs/installation.md#older-tmux for options."
+  say "See docs/getting-started/installation.md#older-tmux for options."
   exit 1
 fi
 say "tmux $VERSION detected — OK"
@@ -163,7 +163,15 @@ if [ "$MODE" = "symlink" ]; then
 else
   say "Copying $SRC -> $DEST"
   run "mkdir -p '$DEST'"
-  run "cp -R '$SRC/tmux.conf' '$SRC/config' '$SRC/local.conf.example' '$DEST/'"
+  # Everything tmux.conf sources, plus what those files reach for at runtime.
+  # This list is not "the interesting directories" — it is the set without
+  # which the config does not load. capabilities/ and terminals/ are sourced
+  # directly; scripts/ backs the Key Explorer popup; keys/ is its data.
+  run "cp -R '$SRC/tmux.conf' '$SRC/local.conf.example' '$SRC/local-options.conf.example' '$DEST/'"
+  for d in config capabilities terminals plugins scripts keys vendor; do
+    [ -e "$SRC/$d" ] || continue
+    run "cp -R '$SRC/$d' '$DEST/'"
+  done
 fi
 
 if [ "$REWRITE" -eq 1 ] && [ "$DRY" -eq 0 ]; then
@@ -192,7 +200,7 @@ if [ "$WITH_TPM" -eq 1 ]; then
   say "Note: --with-tpm is obsolete."
   say "  Plugins are vendored in this repository — no plugin manager needed."
   say "  Enable one with @cfg_plugin_* in config/00-options.conf."
-  say "  See docs/plugins.md."
+  say "  See docs/plugins/available.md."
 fi
 
 # ------------------------------------------------------------------------------
@@ -213,7 +221,7 @@ if [ "$DRY" -eq 0 ]; then
 
   if [ -n "$ERR" ]; then
     printf '\n  Config loaded with messages:\n%s\n\n' "$ERR"
-    say "See docs/troubleshooting.md"
+    say "See docs/reference/troubleshooting.md"
   fi
 
   case "$SENTINEL" in
@@ -226,7 +234,7 @@ if [ "$DRY" -eq 0 ]; then
       say "  Expected @thm_accent to be a colour, got: '${SENTINEL:-<unset>}'"
       say "  This usually means the config is not at the path it expects."
       say "  Installed at: $DEST"
-      say "  See docs/troubleshooting.md and docs/architecture.md#paths"
+      say "  See docs/reference/troubleshooting.md and docs/architecture.md#paths"
       exit 1
       ;;
   esac
@@ -236,6 +244,6 @@ printf '\nDone.\n\n'
 say "Next steps:"
 say "  1. Start tmux:            tmux"
 say "  2. Edit your settings:    $DEST/config/00-options.conf"
-say "  3. Reload after changes:  prefix + r   (prefix is Ctrl-b by default)"
+say "  3. Reload after changes:  prefix + R   (prefix is Ctrl-b by default)"
 say "  4. See all keybindings:   prefix + ?"
 printf '\n'
