@@ -5,10 +5,11 @@ well enough that you can change any part of it without reading the tmux manual
 first.
 
 :::{note}
-**Part of the dotfiles ecosystem**: This is Michael Weiss' personal tmux
-configuration. It is engineered to be portable and beginner-friendly, with one
-single options file to configure, six themes, and complete documentation so anyone
-can use it seamlessly across macOS, Linux, WSL2, and MSYS2.
+**Part of the Arch Dotfiles Ecosystem**: Built for **Arch Linux** as part of [`arch-dotfiles`](https://arch-dotfiles.readthedocs.io/en/latest/),
+this tmux configuration is engineered to be portable and beginner-friendly, with one single options
+file to configure, six themes, and complete documentation so anyone can use it
+out-of-the-box on Arch Linux or seamlessly across any Linux distribution, macOS,
+WSL2, and MSYS2.
 :::
 
 It runs on macOS, Linux, WSL2, and MSYS2/Cygwin from the same files, with no
@@ -131,10 +132,10 @@ publishing
 :caption: Related documentation
 :hidden:
 
-Dotfiles (main hub) <https://michaelweiss-dotfiles.readthedocs.io/en/latest/>
+Arch Dotfiles (main hub) <https://arch-dotfiles.readthedocs.io/en/latest/>
 Neovim (nvim-config) <https://nvim-config.readthedocs.io/en/latest/>
 Ghostty (ghostty-config) <https://ghostty-config.readthedocs.io/en/latest/>
-Kitty (kittiy-config) <https://kittiy-config.readthedocs.io/en/latest/>
+Kitty (kitty-config) <https://kitty-config.readthedocs.io/en/latest/>
 Vim (vim-config) <https://vim-config.readthedocs.io/en/latest/>
 ```
 
@@ -181,7 +182,7 @@ configuration can remove it. See the [platform matrix](getting-started/installat
 
 This tmux setup integrates seamlessly with:
 
-- **[Dotfiles Hub](https://michaelweiss-dotfiles.readthedocs.io/en/latest/)**: Central dotfiles hub and Hyprland desktop.
+- **[Arch Dotfiles Hub (`arch-dotfiles`)](https://arch-dotfiles.readthedocs.io/en/latest/)**: Central Arch Linux dotfiles hub and Hyprland desktop (managed via `adot update`, `adot update tmux`, `adot status`).
 - **[nvim-config](https://nvim-config.readthedocs.io/en/latest/)**: Seamless navigation between tmux panes and Neovim splits via `Ctrl+h/j/k/l`.
-- **[ghostty-config](https://ghostty-config.readthedocs.io/en/latest/)** & **[kittiy-config](https://kittiy-config.readthedocs.io/en/latest/)**: Terminal emulators with matching Catppuccin Mocha colors and truecolor support.
+- **[ghostty-config](https://ghostty-config.readthedocs.io/en/latest/)** & **[kitty-config](https://kitty-config.readthedocs.io/en/latest/)**: Terminal emulators with matching Catppuccin Mocha colors and truecolor support.
 - **[vim-config](https://vim-config.readthedocs.io/en/latest/)**: Synchronized navigation and keybindings.

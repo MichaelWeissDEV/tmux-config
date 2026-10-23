@@ -9,13 +9,15 @@ macOS · Linux · WSL2 · MSYS2/Cygwin
 
 [![CI](https://github.com/MichaelWeissDEV/tmux-config/actions/workflows/ci.yml/badge.svg)](https://github.com/MichaelWeissDEV/tmux-config/actions/workflows/ci.yml)
 [![Docs](https://readthedocs.org/projects/tmux-config/badge/?version=latest)](https://tmux-config.readthedocs.io/en/latest/)
+[![Dotfiles Hub](https://img.shields.io/badge/ecosystem-arch--dotfiles-1793D1?logo=arch-linux&logoColor=white)](https://arch-dotfiles.readthedocs.io/en/latest/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![tmux 3.3+](https://img.shields.io/badge/tmux-3.3%2B-1BB91F?logo=tmux&logoColor=white)](https://github.com/tmux/tmux)
 
-[**Documentation**](https://tmux-config.readthedocs.io) ·
+[**Documentation**](https://tmux-config.readthedocs.io/en/latest/) ·
 [Installation](https://tmux-config.readthedocs.io/en/latest/getting-started/installation/) ·
 [Configuration](https://tmux-config.readthedocs.io/en/latest/configuration/) ·
-[Keybindings](https://tmux-config.readthedocs.io/en/latest/keybindings/quick/)
+[Keybindings](https://tmux-config.readthedocs.io/en/latest/keybindings/quick/) ·
+[Arch Dotfiles Hub](https://arch-dotfiles.readthedocs.io/en/latest/)
 
 </div>
 
@@ -218,6 +220,23 @@ Die vollständige Dokumentation ist auf Englisch:
 [tmux-config.readthedocs.io](https://tmux-config.readthedocs.io)
 
 </details>
+
+## Connected Dotfiles Ecosystem
+
+This configuration is part of the modular **Arch Linux Dotfiles** ecosystem, designed so anyone can install it out-of-the-box on Arch Linux or run it standalone on any Linux distribution, macOS, or WSL2/MSYS2:
+
+| Component | Repository | Documentation |
+| :--- | :--- | :--- |
+| **Arch Dotfiles Hub** *(Main System)* | [`MichaelWeissDEV/dotfiles`](https://github.com/MichaelWeissDEV/dotfiles) | [arch-dotfiles.readthedocs.io](https://arch-dotfiles.readthedocs.io/en/latest/) |
+| **Neovim (`nvim-config`)** | [`MichaelWeissDEV/nvim-config`](https://github.com/MichaelWeissDEV/nvim-config) | [nvim-config.readthedocs.io](https://nvim-config.readthedocs.io/en/latest/) |
+| **tmux (`tmux-config`)** | [`MichaelWeissDEV/tmux-config`](https://github.com/MichaelWeissDEV/tmux-config) | [tmux-config.readthedocs.io](https://tmux-config.readthedocs.io/en/latest/) |
+| **Ghostty (`ghostty-config`)** | [`MichaelWeissDEV/ghostty-config`](https://github.com/MichaelWeissDEV/ghostty-config) | [ghostty-config.readthedocs.io](https://ghostty-config.readthedocs.io/en/latest/) |
+| **Kitty (`kitty-config`)** | [`MichaelWeissDEV/kittiy-config`](https://github.com/MichaelWeissDEV/kittiy-config) | [kitty-config.readthedocs.io](https://kitty-config.readthedocs.io/en/latest/) |
+| **Vim (`vim-config`)** | [`MichaelWeissDEV/vim-config`](https://github.com/MichaelWeissDEV/vim-config) | [vim-config.readthedocs.io](https://vim-config.readthedocs.io/en/latest/) |
+
+Inside `~/git/dotfiles`, update this subtree or the entire ecosystem via `adot update tmux` or `adot update` (also linked as `arch-dot` / `arch-dotfiles`).
+
+---
 
 ## Contributing
 
