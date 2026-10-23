@@ -1,9 +1,5 @@
 # Read the Docs build configuration.
 # https://docs.readthedocs.io/en/stable/config-file/v2.html
-#
-# The docs are MkDocs + Material. Two pages (keybindings, options reference)
-# are generated from the config itself by scripts/ — they are committed to the
-# repo, so this build does not need tmux available.
 
 version: 2
 
@@ -12,12 +8,14 @@ build:
   tools:
     python: "3.12"
 
-mkdocs:
-  configuration: mkdocs.yml
-  # Fail the build on broken internal links and bad nav entries, rather than
-  # publishing a site with dead links in it.
+sphinx:
+  configuration: docs/conf.py
+  builder: dirhtml
   fail_on_warning: true
 
 python:
   install:
-    - requirements: requirements-docs.txt
+    - requirements: docs/requirements.txt
+
+formats:
+  - htmlzip

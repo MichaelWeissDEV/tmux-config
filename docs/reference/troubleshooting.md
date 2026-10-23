@@ -56,7 +56,7 @@ Find the name with `echo $TERM` **outside** tmux.
 Your system has no `tmux-256color` terminfo entry. Common on macOS and older
 distros.
 
-=== "macOS"
+#### macOS
 
     ```bash
     /usr/bin/infocmp -x tmux-256color > /tmp/tmux-256color.src
@@ -69,7 +69,7 @@ distros.
     brew install ncurses
     ```
 
-=== "Linux"
+#### Linux
 
     ```bash
     sudo apt install ncurses-term      # Debian/Ubuntu
@@ -123,12 +123,12 @@ to your own machine needs OSC 52, which needs terminal support:
 
 | Terminal | OSC 52 |
 | --- | :---: |
-| Ghostty, kitty, WezTerm, Alacritty, foot | :material-check: |
-| iTerm2 | :material-check: (enable in Preferences → General → Selection) |
-| Windows Terminal | :material-check: |
-| xterm | :material-check: (needs `allowWindowOps: true`) |
-| **macOS Terminal.app** | :material-close: — no support; use iTerm2 or Ghostty |
-| GNOME Terminal / older VTE | :material-close: |
+| Ghostty, kitty, WezTerm, Alacritty, foot | ✓ |
+| iTerm2 | ✓ (enable in Preferences → General → Selection) |
+| Windows Terminal | ✓ |
+| xterm | ✓ (needs `allowWindowOps: true`) |
+| **macOS Terminal.app** | ✗ — no support; use iTerm2 or Ghostty |
+| GNOME Terminal / older VTE | ✗ |
 
 Verify OSC 52 independently of tmux:
 
@@ -149,7 +149,8 @@ set -g copy-command 'wl-copy'
 
 ---
 
-## Status bar shows underscores instead of `•` and `│` { #status-bar-shows-underscores }
+(status-bar-shows-underscores)=
+## Status bar shows underscores instead of `•` and `│`
 
 Your locale is not UTF-8, so tmux replaces non-ASCII characters with `_`.
 
@@ -204,7 +205,7 @@ tmux show -gv focus-events   # expect on
 
 In order of likelihood:
 
-1. **You did not reload.** ++ctrl+b++ ++r++.
+1. **You did not reload.** ++ctrl+b<kbd> </kbd>r++.
 2. **The setting only applies to new panes.** `escape-time`,
    `default-terminal`, and several window options are read when a pane is
    created. Open a new one, or `tmux kill-server`.
@@ -237,7 +238,7 @@ tmux show -gv @cfg_theme
 
 ## Alt+number does nothing, or breaks an application
 
-`@cfg_alt_window_keys` binds ++alt+1++…++alt+9++ globally, so tmux takes them
+`@cfg_alt_window_keys` binds ++alt+1<kbd>…</kbd>alt+9++ globally, so tmux takes them
 before the program in your pane sees them.
 
 - **Does nothing:** your terminal is sending a different sequence for Alt. In
@@ -253,7 +254,7 @@ set -g @cfg_alt_window_keys "off"
 ## Mouse scroll behaves oddly
 
 With `@cfg_mouse "on"`, scrolling up enters copy mode — that is intended, and
-++q++ leaves it.
+<kbd>q</kbd> leaves it.
 
 If you want your terminal's own scrollback and selection instead:
 
@@ -261,7 +262,7 @@ If you want your terminal's own scrollback and selection instead:
 set -g @cfg_mouse "off"
 ```
 
-To keep the mouse but select text with the terminal, hold ++shift++ while
+To keep the mouse but select text with the terminal, hold <kbd>shift</kbd> while
 dragging. This works in most terminals and bypasses tmux entirely.
 
 ---

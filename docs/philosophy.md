@@ -118,16 +118,16 @@ the environment once at startup (`$TERM`, `$COLORTERM`, `$SSH_*`,
 
 There is a hard technical reason for that, not just taste:
 
-!!! warning "tmux cannot tell you about the client while the config is parsing"
-    `#{client_termfeatures}` and `#{client_termname}` are **empty** at config
-    load time — the server is starting and no client has attached yet.
-    Verified against tmux 3.7.
+```{warning} tmux cannot tell you about the client while the config is parsing
+`#{client_termfeatures}` and `#{client_termname}` are **empty** at config
+load time — the server is starting and no client has attached yet.
+Verified against tmux 3.7.
 
-    So per-client capability logic cannot live in a config file at all. What
-    *does* work is `terminal-features`, which is keyed by TERM glob and matched
-    by tmux as each client attaches — which is why the config declares a table
-    instead of computing values.
-
+So per-client capability logic cannot live in a config file at all. What
+*does* work is `terminal-features`, which is keyed by TERM glob and matched
+by tmux as each client attaches — which is why the config declares a table
+instead of computing values.
+```
 The consequence is a design that stays correct when three clients on three
 different operating systems attach to the same server. See
 [Capabilities](reference/capabilities.md).

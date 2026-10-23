@@ -9,16 +9,16 @@ environment, and this config supports all of the usual ones.
 
 | Platform | Supported | Clipboard tool used | Notes |
 | --- | :---: | --- | --- |
-| **macOS** | :material-check: | `pbcopy` | Install tmux via Homebrew or MacPorts |
-| **Linux (Wayland)** | :material-check: | `wl-copy` | Needs `wl-clipboard` installed |
-| **Linux (X11)** | :material-check: | `xclip` or `xsel` | Either works; `xclip` is preferred |
-| **WSL2** | :material-check: | `clip.exe` | Recommended route on Windows |
-| **MSYS2 / Git Bash** | :material-check: | `/dev/clipboard` | Works, but WSL2 is smoother |
-| **Cygwin** | :material-check: | `/dev/clipboard` | |
-| **Native Windows** | :material-close: | — | **Not possible.** tmux has no native Windows port. |
-| **Headless / SSH / Docker** | :material-check: | OSC 52 only | No local clipboard tool needed |
+| **macOS** | ✓ | `pbcopy` | Install tmux via Homebrew or MacPorts |
+| **Linux (Wayland)** | ✓ | `wl-copy` | Needs `wl-clipboard` installed |
+| **Linux (X11)** | ✓ | `xclip` or `xsel` | Either works; `xclip` is preferred |
+| **WSL2** | ✓ | `clip.exe` | Recommended route on Windows |
+| **MSYS2 / Git Bash** | ✓ | `/dev/clipboard` | Works, but WSL2 is smoother |
+| **Cygwin** | ✓ | `/dev/clipboard` | |
+| **Native Windows** | ✗ | — | **Not possible.** tmux has no native Windows port. |
+| **Headless / SSH / Docker** | ✓ | OSC 52 only | No local clipboard tool needed |
 
-Detection is automatic — see [how it works](../configuration/index.md#copy-mode-clipboard).
+Detection is automatic — see {ref}`how it works <copy-mode-clipboard>`.
 The detected platform is shown in the status bar if you set
 `@cfg_status_style` to `detailed`.
 
@@ -26,36 +26,36 @@ The detected platform is shown in the status bar if you set
 
 ## Installing tmux
 
-=== "macOS"
+#### macOS
 
     ```bash
     brew install tmux
     ```
 
-=== "Debian / Ubuntu"
+#### Debian / Ubuntu
 
     ```bash
     sudo apt update && sudo apt install tmux
     ```
 
-    !!! note "Check the version"
-        Debian stable and Ubuntu LTS sometimes ship tmux 3.2 or older, which
-        this config rejects. Check with `tmux -V` and see
-        [Older tmux](#older-tmux) if needed.
-
-=== "Fedora / RHEL"
+    ```{note} Check the version
+Debian stable and Ubuntu LTS sometimes ship tmux 3.2 or older, which
+this config rejects. Check with `tmux -V` and see
+[Older tmux](#older-tmux) if needed.
+    ```
+#### Fedora / RHEL
 
     ```bash
     sudo dnf install tmux
     ```
 
-=== "Arch"
+#### Arch
 
     ```bash
     sudo pacman -S tmux
     ```
 
-=== "WSL2 (Windows)"
+#### WSL2 (Windows)
 
     Install a distro first, from an **Administrator** PowerShell:
 
@@ -71,7 +71,7 @@ The detected platform is shown in the status bar if you set
 
     Everything from here on happens inside WSL, not in PowerShell.
 
-=== "MSYS2"
+#### MSYS2
 
     ```bash
     pacman -S tmux
@@ -128,22 +128,22 @@ git clone https://github.com/MichaelWeissDEV/tmux-config.git ~/.config/tmux
 echo 'source-file ~/.config/tmux/tmux.conf' > ~/.tmux.conf
 ```
 
-!!! warning "The path is not arbitrary"
-    The config must end up at `~/.config/tmux/`. tmux cannot resolve paths
-    relative to the file being sourced, so that location is written out in
-    full inside the config.
+```{warning} The path is not arbitrary
+The config must end up at `~/.config/tmux/`. tmux cannot resolve paths
+relative to the file being sourced, so that location is written out in
+full inside the config.
 
-    If you install it elsewhere by hand, the modules will not load — and
-    because they are sourced with `source-file -q`, **tmux will report no
-    error whatsoever**. Check with:
+If you install it elsewhere by hand, the modules will not load — and
+because they are sourced with `source-file -q`, **tmux will report no
+error whatsoever**. Check with:
 
-    ```bash
-    tmux show -gv @thm_accent   # a colour means it worked; "invalid option" means it did not
-    ```
+```bash
+tmux show -gv @thm_accent   # a colour means it worked; "invalid option" means it did not
+```
 
-    `install.sh` handles a non-default `XDG_CONFIG_HOME` automatically by
-    rewriting the paths. See [Architecture → Paths](../architecture.md#paths).
-
+`install.sh` handles a non-default `XDG_CONFIG_HOME` automatically by
+rewriting the paths. See [Architecture → Paths](../architecture.md#paths).
+```
 ---
 
 ## First run
@@ -159,12 +159,12 @@ Try these:
 
 | Press | What happens |
 | --- | --- |
-| ++ctrl+b++ then ++question++ | List every keybinding |
-| ++ctrl+b++ then ++bar++ | Split the pane side by side |
-| ++ctrl+b++ then ++minus++ | Split the pane stacked |
-| ++ctrl+b++ then ++c++ | New window |
-| ++ctrl+b++ then ++r++ | Reload the config after an edit |
-| ++ctrl+b++ then ++d++ | Detach (`tmux attach` to come back) |
+| ++ctrl+b<kbd> then </kbd>question<kbd> | List every keybinding |
+| </kbd>ctrl+b<kbd> then </kbd>bar<kbd> | Split the pane side by side |
+| </kbd>ctrl+b<kbd> then </kbd>minus<kbd> | Split the pane stacked |
+| </kbd>ctrl+b<kbd> then </kbd>c<kbd> | New window |
+| </kbd>ctrl+b<kbd> then </kbd>r<kbd> | Reload the config after an edit |
+| </kbd>ctrl+b<kbd> then </kbd>d<kbd> | Detach (`tmux attach` to come back) |
 
 The full list is on the [Keybindings](../keybindings/quick.md) page.
 
@@ -176,7 +176,7 @@ The full list is on the [Keybindings](../keybindings/quick.md) page.
 cd ~/.config/tmux && git pull
 ```
 
-Then press ++ctrl+b++ ++r++ inside tmux, or run `tmux kill-server` for a clean
+Then press </kbd>ctrl+b<kbd> </kbd>r++ inside tmux, or run `tmux kill-server` for a clean
 restart.
 
 Your `local.conf` and `config/themes/custom.conf` are gitignored, so a pull
@@ -184,11 +184,11 @@ never touches them. If you edited `config/00-options.conf` directly, git may
 report a conflict there — that is the one file you are expected to edit, and
 resolving it is normally a one-line merge.
 
-!!! tip "Avoiding option conflicts entirely"
-    Put your changes in `local.conf` instead of `00-options.conf`. It is loaded
-    last, so `set -g @cfg_theme "nord"` there overrides the default without
-    ever touching a tracked file. See [Local overrides](../configuration/index.md#local-overrides).
-
+```{tip} Avoiding option conflicts entirely
+Put your changes in `local.conf` instead of `00-options.conf`. It is loaded
+last, so `set -g @cfg_theme "nord"` there overrides the default without
+ever touching a tracked file. See [Local overrides](../configuration/index.md#local-overrides).
+```
 ---
 
 ## Older tmux

@@ -4,12 +4,12 @@ Copy mode is how you scroll back, search your output, and select text with the
 keyboard. Enter it with <kbd>prefix</kbd> <kbd>[</kbd>, or by scrolling up with
 the mouse. Leave it with <kbd>q</kbd>.
 
-!!! note "Copy mode is not "tmux vi mode""
-    Setting `@cfg_mode_keys` to `vi` changes the keys **inside copy mode and
-    nowhere else**. It has no effect on Neovim, on your shell's line editor, or
-    on any program running in a pane. This is the single most common
-    misunderstanding about tmux configuration.
-
+```{note} Copy mode is not 
+Setting `@cfg_mode_keys` to `vi` changes the keys **inside copy mode and
+nowhere else**. It has no effect on Neovim, on your shell's line editor, or
+on any program running in a pane. This is the single most common
+misunderstanding about tmux configuration.
+```
 ## What tmux does by default
 
 tmux ships two complete key tables and uses one of them:

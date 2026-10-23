@@ -45,12 +45,12 @@ prefix h/j/k/l
 
 which cannot collide with anything running inside a pane.
 
-!!! note "The Alt+number exception"
-    <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> *is* bound globally by default.
-    It does not affect Neovim's normal keymaps, but it is still interception —
-    see [Philosophy](../philosophy.md#the-one-exception-to-rule-3). Turn it off
-    with `@cfg_alt_window_keys "off"`.
-
+```{note} The Alt+number exception
+<kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> *is* bound globally by default.
+It does not affect Neovim's normal keymaps, but it is still interception —
+see [Philosophy](../philosophy.md#the-one-exception-to-rule-3). Turn it off
+with `@cfg_alt_window_keys "off"`.
+```
 ---
 
 ## Copy mode does not touch Neovim
@@ -77,14 +77,14 @@ Plus the Neovim half:
 { "christoomey/vim-tmux-navigator", lazy = false }
 ```
 
-!!! warning "This deliberately breaks the input-safety rule"
-    The plugin binds Ctrl-hjkl in the root table and forwards them when the
-    pane runs vim/nvim. `scripts/check` will report the interception — that is
-    correct behaviour from the checker, not a bug.
+```{warning} This deliberately breaks the input-safety rule
+The plugin binds Ctrl-hjkl in the root table and forwards them when the
+pane runs vim/nvim. `scripts/check` will report the interception — that is
+correct behaviour from the checker, not a bug.
 
-    It is off by default for exactly this reason. Enable it only if you want
-    that tradeoff.
-
+It is off by default for exactly this reason. Enable it only if you want
+that tradeoff.
+```
 The plugin must be vendored first — see [Plugins](../plugins/available.md).
 
 ---

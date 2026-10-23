@@ -63,14 +63,14 @@ safety.
 `WARN` means degraded but working. `FAIL` means broken. Exit status is `0`
 unless something failed, so it is safe in CI.
 
-!!! tip "The check that catches the nastiest failure"
-    Every module is sourced with `source-file -q`, which is **silent** when a
-    file is missing. A config installed at the wrong path therefore loads with
-    no error and does nothing.
+```{tip} The check that catches the nastiest failure
+Every module is sourced with `source-file -q`, which is **silent** when a
+file is missing. A config installed at the wrong path therefore loads with
+no error and does nothing.
 
-    `doctor` verifies a sentinel option instead of trusting an empty error
-    stream. So does `install.sh`.
-
+`doctor` verifies a sentinel option instead of trusting an empty error
+stream. So does `install.sh`.
+```
 ---
 
 ## check

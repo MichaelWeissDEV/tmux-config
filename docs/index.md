@@ -4,6 +4,13 @@ A tmux configuration that is **readable, portable, and fast** — and documented
 well enough that you can change any part of it without reading the tmux manual
 first.
 
+:::{note}
+**Part of the dotfiles ecosystem**: This is Michael Weiss' personal tmux
+configuration. It is engineered to be portable and beginner-friendly, with one
+single options file to configure, six themes, and complete documentation so anyone
+can use it seamlessly across macOS, Linux, WSL2, and MSYS2.
+:::
+
 It runs on macOS, Linux, WSL2, and MSYS2/Cygwin from the same files, with no
 plugins required.
 
@@ -20,65 +27,127 @@ This one takes a different position:
 **Everything you would normally want to change lives in one file, as a named
 option with a documented default.**
 
-```tmux title="config/00-options.conf"
+```tmux
 set -g @cfg_theme  "catppuccin-mocha"
 set -g @cfg_prefix "C-b"
 set -g @cfg_mouse  "on"
 ```
 
-Change a value, press ++ctrl+b++ ++r++, and it applies. You do not need to know
+Change a value in `config/00-options.conf`, press <kbd>Ctrl+b</kbd> <kbd>r</kbd>, and it applies. You do not need to know
 which tmux option, which key table, or which of the seven `pane-*-style`
 settings implements it.
 
 ---
 
+## Table of Contents
+
+```{toctree}
+:maxdepth: 1
+:caption: Getting Started
+
+getting-started/quick-start
+getting-started/installation
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Configuration
+
+configuration/index
+configuration/local-overrides
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Keybindings
+
+keybindings/quick
+keybindings/mouse
+keybindings/copy-mode
+keybindings/key-explorer
+keybindings/complete
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Concepts
+
+tmux/sessions
+tmux/windows
+tmux/panes
+tmux/layouts
+tmux/buffers
+tmux/status-line
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Integration
+
+integration/neovim
+integration/clipboard
+integration/ssh
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Plugins
+
+plugins/available
+plugins/enabling
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Customization
+
+customization/themes
+customization/keybindings
+customization/status-line
+customization/recipes
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Reference
+
+reference/options
+reference/capabilities
+reference/compatibility
+reference/troubleshooting
+reference/diagnostics
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Development
+
+philosophy
+architecture
+publishing
+```
+
+```{toctree}
+:caption: Related documentation
+:hidden:
+
+Dotfiles (main hub) <https://michaelweiss-dotfiles.readthedocs.io/en/latest/>
+Neovim (nvim-config) <https://nvim-config.readthedocs.io/en/latest/>
+Ghostty (ghostty-config) <https://ghostty-config.readthedocs.io/en/latest/>
+Kitty (kittiy-config) <https://kittiy-config.readthedocs.io/en/latest/>
+Vim (vim-config) <https://vim-config.readthedocs.io/en/latest/>
+```
+
+---
+
 ## What you get
 
-<div class="grid cards" markdown>
-
--   :material-tune: **One file to configure**
-
-    Every setting is a named `@cfg_*` option with its default, its accepted
-    values, and the reason it is set that way written next to it.
-
-    [:octicons-arrow-right-24: Configuration](configuration/index.md)
-
--   :material-palette: **Six themes, ten variables**
-
-    Themes define ten colours and nothing else. Writing your own is a
-    twenty-line file that touches no layout.
-
-    [:octicons-arrow-right-24: Theming](customization/themes.md)
-
--   :material-content-copy: **Clipboard that works everywhere**
-
-    Detects macOS, Wayland, X11, WSL, and Cygwin, plus OSC 52 so copy works
-    over SSH.
-
-    [:octicons-arrow-right-24: Clipboard](configuration/index.md#copy-mode-clipboard)
-
--   :material-shield-check: **Degrades instead of breaking**
-
-    True colour, Unicode glyphs and clipboard route are detected, not assumed.
-    No UTF-8 locale? ASCII separators, automatically.
-
-    [:octicons-arrow-right-24: Capabilities](reference/capabilities.md)
-
--   :material-package-variant-closed: **Plugins vendored, not fetched**
-
-    Pinned inside the repo via `git subtree`. No plugin manager, no download
-    at startup, works offline.
-
-    [:octicons-arrow-right-24: Plugins](plugins/available.md)
-
--   :material-flash: **No forks in the hot path**
-
-    Conditionals resolve at parse time. The status bar runs no subprocesses.
-    Plugins are off by default.
-
-    [:octicons-arrow-right-24: Architecture](architecture.md)
-
-</div>
+- ⚙ **One file to configure**: Every setting is a named `@cfg_*` option with its default, its accepted values, and the reason it is set that way written next to it. ([Configuration](configuration/index.md))
+- 🎨 **Six themes, ten variables**: Themes define ten colours and nothing else. Writing your own is a twenty-line file that touches no layout. ([Theming](customization/themes.md))
+- 📋 **Clipboard that works everywhere**: Detects macOS, Wayland, X11, WSL, and Cygwin, plus OSC 52 so copy works over SSH. ([Clipboard](configuration/index.md))
+- 🛡 **Degrades instead of breaking**: True colour, Unicode glyphs and clipboard route are detected, not assumed. No UTF-8 locale? ASCII separators, automatically. ([Capabilities](reference/capabilities.md))
+- 📦 **Plugins vendored, not fetched**: Pinned inside the repo via `git subtree`. No plugin manager, no download at startup, works offline. ([Plugins](plugins/available.md))
+- ⚡ **No forks in the hot path**: Conditionals resolve at parse time. The status bar runs no subprocesses. Plugins are off by default. ([Architecture](architecture.md))
 
 ---
 
@@ -99,47 +168,20 @@ tmux
 Full instructions, including the Windows situation, are in
 [Installation](getting-started/installation.md).
 
-!!! warning "Windows users, read this first"
-    tmux does **not** run on native Windows — not in PowerShell, not in
-    `cmd.exe`, not in Windows Terminal by itself. It needs WSL2, MSYS2, or
-    Cygwin. This config supports all three, but the requirement is real and no
-    configuration can remove it. See the
-    [platform matrix](getting-started/installation.md#platform-support).
+```{warning}
+tmux does **not** run on native Windows — not in PowerShell, not in
+`cmd.exe`, not in Windows Terminal by itself. It needs WSL2, MSYS2, or
+Cygwin. This config supports all three, but the requirement is real and no
+configuration can remove it. See the [platform matrix](getting-started/installation.md).
+```
 
 ---
 
-## The three files that matter
+## Connected Dotfiles Ecosystem
 
-| File | What it is for |
-| --- | --- |
-| [`config/00-options.conf`](configuration/index.md) | **Change settings here.** Every tunable, with documented defaults. |
-| [`local.conf`](configuration/index.md#local-overrides) | **Add your own things here.** Gitignored, loaded last, survives `git pull`. Start from `local.conf.example`, which ships every [recipe](customization/recipes.md) commented out. |
-| [`tmux.conf`](architecture.md#file-layout) | The loader. You should not need to edit it. |
+This tmux setup integrates seamlessly with:
 
-Everything else is a module that reads your options and applies them.
-
----
-
-## Requirements
-
-- **tmux 3.3 or newer.** Checked at startup with a clear message if not.
-  ([Why 3.3?](getting-started/installation.md#older-tmux))
-- A UTF-8 locale, for the status bar separators.
-  ([What happens without one](reference/troubleshooting.md#status-bar-shows-underscores))
-- That is all. No Nerd Font, no Python, no plugin manager.
-
----
-
-## Where to go next
-
-- Never used tmux before? → [Installation](getting-started/installation.md), then
-  [Keybindings](keybindings/quick.md)
-- Want to change how it looks? → [Theming](customization/themes.md)
-- Want to change how it behaves? → [Configuration](configuration/index.md)
-- Want ready-made additions to paste in? → [Recipes](customization/recipes.md)
-- Something is broken? → [Troubleshooting](reference/troubleshooting.md)
-- On a weird terminal, or over SSH? → [Capabilities](reference/capabilities.md)
-- Using Neovim? → [Neovim](integration/neovim.md)
-- Curious why it is built this way? → [Philosophy](philosophy.md) and
-  [Architecture](architecture.md)
-- Debugging? → [Diagnostics](reference/diagnostics.md)
+- **[Dotfiles Hub](https://michaelweiss-dotfiles.readthedocs.io/en/latest/)**: Central dotfiles hub and Hyprland desktop.
+- **[nvim-config](https://nvim-config.readthedocs.io/en/latest/)**: Seamless navigation between tmux panes and Neovim splits via `Ctrl+h/j/k/l`.
+- **[ghostty-config](https://ghostty-config.readthedocs.io/en/latest/)** & **[kittiy-config](https://kittiy-config.readthedocs.io/en/latest/)**: Terminal emulators with matching Catppuccin Mocha colors and truecolor support.
+- **[vim-config](https://vim-config.readthedocs.io/en/latest/)**: Synchronized navigation and keybindings.

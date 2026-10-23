@@ -34,12 +34,12 @@ documentation build.
    pins Ubuntu 24.04, Python 3.12, MkDocs and `fail_on_warning: true`.
 4. Build.
 
-!!! warning "If the slug is taken"
-    Read the Docs project names are global. If `tmux-config` is unavailable you
-    will get something like `tmux-config-mw`, and the published URL changes.
-    Update `site_url` in `mkdocs.yml`, the badge and links in `README.md`, and
-    the links in `docs/index.md` to match.
-
+```{warning} If the slug is taken
+Read the Docs project names are global. If `tmux-config` is unavailable you
+will get something like `tmux-config-mw`, and the published URL changes.
+Update `site_url` in `mkdocs.yml`, the badge and links in `README.md`, and
+the links in `docs/index.md` to match.
+```
 ### Why the build cannot silently rot
 
 `fail_on_warning: true` plus the `validation:` block in `mkdocs.yml` turn broken
@@ -77,11 +77,11 @@ Updating later:
 ./scripts/update-vendor --pull-all
 ```
 
-!!! note "Users never run this"
-    End users get plugin updates by pulling this repository, which ships a
-    snapshot that was tested together with the config. That is the whole point
-    of vendoring over a plugin manager.
-
+```{note} Users never run this
+End users get plugin updates by pulling this repository, which ships a
+snapshot that was tested together with the config. That is the whole point
+of vendoring over a plugin manager.
+```
 ---
 
 ## 4. Releasing

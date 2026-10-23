@@ -21,38 +21,38 @@ and closing it leaves no trace. Requires tmux 3.2+.
 <kbd>prefix</kbd> <kbd>g</kbd> already opens a scratch shell in the current
 directory.
 
-=== "lazygit"
+#### lazygit
 
     ```tmux
     bind -N "Open lazygit" G display-popup -E -w 90% -h 90% \
       -d "#{pane_current_path}" lazygit
     ```
 
-=== "Notes"
+#### Notes
 
     ```tmux
     bind -N "Open notes" N display-popup -E -w 70% -h 70% \
       "${EDITOR:-vi} ~/notes.md"
     ```
 
-=== "man page"
+#### man page
 
     ```tmux
     bind -N "Look up a man page" M command-prompt -p "man:" \
       "display-popup -E -w 80% -h 80% 'man %%'"
     ```
 
-=== "htop"
+#### htop
 
     ```tmux
     bind -N "Process viewer" T display-popup -E -w 90% -h 90% "htop"
     ```
 
-!!! tip "`-d` is what makes a popup useful"
-    `-d "#{pane_current_path}"` opens the popup in the directory of the pane
-    you were in. Without it you land in `$HOME`, which makes a git popup
-    useless.
-
+```{tip} `-d` is what makes a popup useful
+`-d "#{pane_current_path}"` opens the popup in the directory of the pane
+you were in. Without it you land in `$HOME`, which makes a git popup
+useless.
+```
 ---
 
 ## Session and project switching
@@ -87,17 +87,17 @@ Session names cannot contain dots, hence the `tr . _`.
 
 ## Status bar additions
 
-!!! danger "Read this before adding any `#()`"
-    A `#(command)` in the status bar forks a process on **every refresh, for
-    every attached client**. At the default 5 s interval with two clients
-    attached, that is a process every 2.5 seconds, forever.
+```{warning} Read this before adding any `#()`
+A `#(command)` in the status bar forks a process on **every refresh, for
+every attached client**. At the default 5 s interval with two clients
+attached, that is a process every 2.5 seconds, forever.
 
-    This is the single most common reason a tmux config feels heavy. The
-    default status bar contains no `#()` at all.
+This is the single most common reason a tmux config feels heavy. The
+default status bar contains no `#()` at all.
 
-    **Rules:** keep the command under ~50 ms, raise `status-interval` to 15 s
-    or more, and never combine `#()` with `status-interval 1`.
-
+**Rules:** keep the command under ~50 ms, raise `status-interval` to 15 s
+or more, and never combine `#()` with `status-interval 1`.
+```
 ### Git branch
 
 ```tmux
@@ -118,10 +118,10 @@ set -ag status-right "#{?#{==:#{@cap_ssh},yes},#[fg=#{@thm_urgent}#,bold] SSH ,}
 A visible marker for "this is not my machine" is worth more than most status
 widgets.
 
-!!! note "Why the `#,` in there"
-    Inside a `#{?...}` conditional, a comma separates the branches. A literal
-    comma — such as the one in `fg=…,bold` — must be escaped as `#,`.
-
+```{note} Why the `#,` in there
+Inside a `#{?...}` conditional, a comma separates the branches. A literal
+comma — such as the one in `fg=…,bold` — must be escaped as `#,`.
+```
 ---
 
 ## Appearance

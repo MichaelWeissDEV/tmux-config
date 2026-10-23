@@ -83,10 +83,10 @@ Enable continuum alone and you get a message explaining the dependency.
 Silently switching on a second plugin because you asked for the first is
 exactly the hidden behaviour this project avoids.
 
-!!! note "Why it is opt-in"
-    It keeps a background process alive for the life of the server and writes
-    to disk on a timer.
-
+```{note} Why it is opt-in
+It keeps a background process alive for the life of the server and writes
+to disk on a timer.
+```
 ### vim-tmux-navigator
 
 See [Neovim](../integration/neovim.md). This is the one plugin that intercepts application
@@ -136,15 +136,15 @@ Updating:
 ./scripts/update-vendor --pull-all
 ```
 
-!!! warning "Needs a git repository"
-    `git subtree` requires a repo with at least one commit:
+```{warning} Needs a git repository
+`git subtree` requires a repo with at least one commit:
 
-    ```bash
-    git init && git add -A && git commit -m "Initial commit"
-    ```
+```bash
+git init && git add -A && git commit -m "Initial commit"
+```
 
-    `--list` works without one.
-
+`--list` works without one.
+```
 Then write an adapter in `plugins/<name>.conf` following the existing ones, add
 its option to `config/00-options.conf`, and source it from
 `config/70-plugins.conf`. `scripts/check` fails if an option is used but never
@@ -152,21 +152,22 @@ defined.
 
 ---
 
+(binding-conflicts)=
 ## Binding conflicts
 
 A plugin can silently rebind a key this config already uses. The failure mode is
 a key that quietly does something else after you enable a plugin, which is
 unpleasant to debug.
 
-!!! warning "`scripts/check` cannot catch these"
-    It runs with the shipped defaults, where every plugin is off. Conflict
-    detection lives in `./tests/run`, which enables each vendored plugin and
-    diffs the prefix key table against the baseline.
+```{warning} `scripts/check` cannot catch these
+It runs with the shipped defaults, where every plugin is off. Conflict
+detection lives in `./tests/run`, which enables each vendored plugin and
+diffs the prefix key table against the baseline.
 
-    ```bash
-    ./tests/run     # see the "Plugin binding overrides" section
-    ```
-
+```bash
+./tests/run     # see the "Plugin binding overrides" section
+```
+```
 The overrides in the currently vendored snapshot:
 
 ### tmux-sessionist — five overrides

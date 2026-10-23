@@ -1,14 +1,14 @@
 # Options reference
 
-!!! info "This page is generated"
-    Produced from `config/00-options.conf` by `scripts/gen-options.py`,
-    so it cannot drift from the actual defaults. Regenerate with:
+```{note} This page is generated
+Produced from `config/00-options.conf` by `scripts/gen-options.py`,
+so it cannot drift from the actual defaults. Regenerate with:
 
-    ```bash
-    ./scripts/gen-options.py > docs/reference/options.md
-    ```
-
-Every option below is set in [`config/00-options.conf`](../configuration/index.md). Change a value there, or override it in `local.conf`, then press ++ctrl+b++ ++r++.
+```bash
+./scripts/gen-options.py > docs/reference/options.md
+```
+```
+Every option below is set in [`config/00-options.conf`](../configuration/index.md). Change a value there, or override it in `local.conf`, then press ++ctrl+b<kbd> </kbd>r++.
 
 ## All options at a glance
 

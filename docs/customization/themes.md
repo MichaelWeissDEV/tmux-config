@@ -6,7 +6,7 @@
 set -g @cfg_theme "nord"
 ```
 
-Press ++ctrl+b++ ++r++. That is the whole procedure.
+Press ++ctrl+b<kbd> </kbd>r++. That is the whole procedure.
 
 | Value | Palette |
 | --- | --- |
@@ -105,12 +105,12 @@ register it in `config/50-theme.conf`:
 %endif
 ```
 
-!!! question "Why a `%if` chain instead of building the path from the name?"
-    Because `source-file` does not expand formats — `source-file
-    "themes/#{@cfg_theme}.conf"` looks up a directory literally named
-    `#{@cfg_theme}`. The chain is verbose but resolves at parse time and costs
-    no shell forks. See [Architecture](../architecture.md#why-the-theme-loader-looks-like-that).
-
+```{note} Why a `%if` chain instead of building the path from the name?
+Because `source-file` does not expand formats — `source-file
+"themes/#{@cfg_theme}.conf"` looks up a directory literally named
+`#{@cfg_theme}`. The chain is verbose but resolves at parse time and costs
+no shell forks. See [Architecture](../architecture.md#why-the-theme-loader-looks-like-that).
+```
 ---
 
 ## Overriding a single colour
@@ -145,10 +145,10 @@ set -g window-status-current-format \
   "#[fg=#{@thm_surface},bg=#{@thm_bg}]#[fg=#{@thm_accent},bg=#{@thm_surface},bold] #I #[fg=#{@thm_fg}]#W #[fg=#{@thm_surface},bg=#{@thm_bg}]"
 ```
 
-!!! warning "Check your locale before relying on any non-ASCII glyph"
-    Without a UTF-8 locale, tmux replaces these characters with `_`. See
-    [Troubleshooting](../reference/troubleshooting.md#status-bar-shows-underscores).
-
+```{warning} Check your locale before relying on any non-ASCII glyph
+Without a UTF-8 locale, tmux replaces these characters with `_`. See
+{ref}`status-bar-shows-underscores`.
+```
 ---
 
 ## Previewing every theme

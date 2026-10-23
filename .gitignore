@@ -7,8 +7,11 @@ local.conf
 config/themes/custom.conf
 
 # Docs build output
+docs/_build/
+_build/
 site/
 .cache/
+.venv/
 __pycache__/
 *.pyc
 

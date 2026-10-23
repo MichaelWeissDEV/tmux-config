@@ -70,13 +70,13 @@ depth — see [Theming](../customization/themes.md).
 
 This one is not cosmetic.
 
-!!! danger "In a non-UTF-8 locale, tmux replaces every non-ASCII character with `_`"
-    A status bar written with `•` and `│` degrades into
-    `session _ 1 nvim _ 19:45 _ 14.08.2026`. Verified against tmux 3.7.
+```{warning} In a non-UTF-8 locale, tmux replaces every non-ASCII character with `_`
+A status bar written with `•` and `│` degrades into
+`session _ 1 nvim _ 19:45 _ 14.08.2026`. Verified against tmux 3.7.
 
-    That happens exactly where it hurts: minimal containers, cron, serial
-    consoles, and SSH into a host with no locale configured.
-
+That happens exactly where it hurts: minimal containers, cron, serial
+consoles, and SSH into a host with no locale configured.
+```
 So the glyph set is a capability. `capabilities/symbols.conf` resolves it once
 into `@sym_*` variables, and the status bar refers only to those:
 
@@ -92,6 +92,7 @@ setting.
 
 ---
 
+(clipboard-routing)=
 ## Clipboard routing
 
 Two independent paths, chosen from the detected platform:
@@ -121,9 +122,9 @@ Capability detection reads the **server's** environment, which describes only
 whichever client started it. Per-client behaviour cannot be computed in a
 config file:
 
-!!! warning "`#{client_termfeatures}` is empty at config-parse time"
-    No client has attached yet when the config loads. Verified.
-
+```{warning} `#{client_termfeatures}` is empty at config-parse time
+No client has attached yet when the config loads. Verified.
+```
 What handles this correctly is `terminal-features`, a server option keyed by
 TERM glob:
 

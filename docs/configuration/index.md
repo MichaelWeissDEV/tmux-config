@@ -1,7 +1,7 @@
 # Configuration
 
 Everything tunable lives in **`config/00-options.conf`**. Open it, change a
-value, press ++ctrl+b++ ++r++.
+value, press ++ctrl+b<kbd> </kbd>r<kbd>.
 
 ```tmux
 set -g @cfg_theme "nord"
@@ -29,11 +29,11 @@ set -gF mouse "#{@cfg_mouse}"
 %endif
 ```
 
-!!! danger "The `-F` flag is not optional"
-    `set -g mouse "#{@cfg_mouse}"` stores the **literal text** `#{@cfg_mouse}`.
-    Only `set -gF` expands the format. This is the single most common bug when
-    extending this config, and tmux reports no error when you get it wrong.
-
+```{warning} The `-F` flag is not optional
+`set -g mouse "#{@cfg_mouse}"` stores the **literal text** `#{@cfg_mouse}`.
+Only `set -gF` expands the format. This is the single most common bug when
+extending this config, and tmux reports no error when you get it wrong.
+```
 The `%if` mechanism has a sharp edge that shapes the whole file layout — see
 [Architecture → The `%if` trap](../architecture.md#the-if-trap).
 
@@ -46,12 +46,12 @@ set -g @cfg_prefix "C-b"
 set -g @cfg_keep_default_prefix "off"
 ```
 
-++ctrl+b++ is the default and collides with nothing. ++ctrl+a++ is the classic
+</kbd>ctrl+b<kbd> is the default and collides with nothing. </kbd>ctrl+a<kbd> is the classic
 alternative — easier to reach, but it takes over "jump to start of line" in
 every shell and readline program inside your panes. If you switch, press it
 twice to send it through.
 
-Setting `@cfg_keep_default_prefix` to `on` keeps ++ctrl+b++ working as a second
+Setting `@cfg_keep_default_prefix` to `on` keeps </kbd>ctrl+b<kbd> working as a second
 prefix, which makes the transition painless.
 
 ---
@@ -64,7 +64,7 @@ prefix, which makes the transition painless.
 set -g @cfg_escape_time "10"
 ```
 
-How long tmux waits after ++esc++ to see whether it begins an escape sequence.
+How long tmux waits after </kbd>esc<kbd> to see whether it begins an escape sequence.
 
 **tmux's own default is 500 ms, and it is the reason Neovim feels sluggish
 inside tmux** — every time you leave insert mode, you wait half a second. `10`
@@ -82,7 +82,7 @@ keyboard. tmux defaults to `0`, which puts window 0 at the far end.
 
 `renumber-windows off` means a window keeps its number for the whole session.
 Closing window 2 leaves a gap rather than renumbering 3 → 2. This is
-deliberate: it keeps ++alt+3++ pointing at the same window all day. Turn it on
+deliberate: it keeps </kbd>alt+3<kbd> pointing at the same window all day. Turn it on
 if you prefer a gapless list.
 
 ### Scrollback
@@ -101,16 +101,17 @@ build logs.
 set -g @cfg_alt_window_keys "on"
 ```
 
-++alt+1++ … ++alt+9++ jump straight to a window with no prefix.
+</kbd>alt+1<kbd> … </kbd>alt+9<kbd> jump straight to a window with no prefix.
 
-!!! warning "This takes the keys globally"
-    Bindings without a prefix are intercepted by tmux **before** the program in
-    your pane sees them. ++alt+number++ is used by terminal browsers, some TUI
-    applications, and Windows Terminal's own tab switching. If you live in
-    those, set this to `off` and use ++ctrl+b++ ++1++ instead.
-
+```{warning} This takes the keys globally
+Bindings without a prefix are intercepted by tmux **before** the program in
+your pane sees them. </kbd>alt+number<kbd> is used by terminal browsers, some TUI
+applications, and Windows Terminal's own tab switching. If you live in
+those, set this to `off` and use </kbd>ctrl+b<kbd> </kbd>1<kbd> instead.
+```
 ---
 
+(copy-mode-clipboard)=
 ## Copy mode & clipboard
 
 ### What copy mode is not
@@ -119,13 +120,13 @@ set -g @cfg_alt_window_keys "on"
 set -g @cfg_mode_keys "vi"
 ```
 
-This gives you `v` / `y` / ++ctrl+v++ inside tmux's copy mode. It has **no
+This gives you `v` / `y` / </kbd>ctrl+v<kbd> inside tmux's copy mode. It has **no
 effect on Neovim, your shell, or anything running in a pane** — copy mode is a
 separate tmux mode with its own key table. Setting `mode-keys vi` does not make
 tmux "vi flavoured" in general.
 
-Enter copy mode with ++ctrl+b++ ++bracket-left++ or by scrolling up with the
-mouse; leave it with ++q++.
+Enter copy mode with </kbd>ctrl+b<kbd> </kbd>bracket-left<kbd> or by scrolling up with the
+mouse; leave it with </kbd>q<kbd>.
 
 ### The two clipboard paths
 
@@ -160,15 +161,15 @@ Platform detection is automatic and ordered deliberately: WSL is checked before
 Linux, because a WSL system reports `Linux` from `uname` and may even have
 `xclip` installed — but the clipboard you actually see is the Windows one.
 
-!!! note "Terminal support for OSC 52"
-    Ghostty, kitty, WezTerm, Alacritty, foot, iTerm2, and Windows Terminal
-    support it. **macOS Terminal.app does not.** See
-    [Troubleshooting → Clipboard](../reference/troubleshooting.md#copying-does-not-reach-my-clipboard).
-
+```{note} Terminal support for OSC 52
+Ghostty, kitty, WezTerm, Alacritty, foot, iTerm2, and Windows Terminal
+support it. **macOS Terminal.app does not.** See
+[Troubleshooting → Clipboard](../reference/troubleshooting.md#copying-does-not-reach-my-clipboard).
+```
 ### Pasting
 
-++ctrl+b++ ++p++ pastes tmux's own buffer. To paste from the OS clipboard, use
-your terminal's normal shortcut (++cmd+v++ / ++ctrl+shift+v++) — that path does
+</kbd>ctrl+b<kbd> </kbd>p<kbd> pastes tmux's own buffer. To paste from the OS clipboard, use
+your terminal's normal shortcut (</kbd>cmd+v<kbd> / </kbd>ctrl+shift+v<kbd>) — that path does
 not involve tmux at all.
 
 ---
@@ -273,19 +274,19 @@ if-shell -b '[ "$(hostname -s)" = "work-laptop" ]' \
   'set -g status-position top'
 ```
 
-!!! tip "Prefer local.conf over editing 00-options.conf"
-    Overriding `set -g @cfg_theme "nord"` in `local.conf` works exactly as well
-    as editing the options file, and it means `git pull` can never produce a
-    conflict.
-
+```{tip} Prefer local.conf over editing 00-options.conf
+Overriding `set -g @cfg_theme "nord"` in `local.conf` works exactly as well
+as editing the options file, and it means `git pull` can never produce a
+conflict.
+```
 ---
 
 ## Applying changes
 
 | Situation | What to do |
 | --- | --- |
-| Changed an option | ++ctrl+b++ ++r++ |
-| Changed the theme | ++ctrl+b++ ++r++ |
+| Changed an option | </kbd>ctrl+b<kbd> </kbd>r<kbd> |
+| Changed the theme | </kbd>ctrl+b<kbd> </kbd>r++ |
 | Changed something that will not take | `tmux kill-server` and start again |
 
 Some settings — `escape-time`, `default-terminal`, and a few window options —

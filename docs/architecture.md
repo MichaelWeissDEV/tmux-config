@@ -65,7 +65,7 @@ file has run.**
 
 Which means:
 
-=== "Works"
+#### Works
 
     An option set in a **previously sourced** file is visible.
 
@@ -82,7 +82,7 @@ Which means:
     %endif
     ```
 
-=== "Silently fails"
+#### Silently fails
 
     An option set **earlier in the same file** is not visible.
 
@@ -137,11 +137,11 @@ Explicit lines are more verbose and they work.
 
 | Form | Works | Note |
 | --- | :---: | --- |
-| `~/.config/tmux/x.conf` | :material-check: | Tilde is expanded |
-| `$SOME_VAR/x.conf` | :material-check: | Environment variables are expanded |
-| `~/.config/tmux/*.conf` | :material-check: | Globs work, but see the warning above |
-| `config/x.conf` | :material-close: | Not relative to the sourcing file |
-| `#{d:current_file}/x.conf` | :material-close: | **Formats are not expanded** |
+| `~/.config/tmux/x.conf` | ✓ | Tilde is expanded |
+| `$SOME_VAR/x.conf` | ✓ | Environment variables are expanded |
+| `~/.config/tmux/*.conf` | ✓ | Globs work, but see the warning above |
+| `config/x.conf` | ✗ | Not relative to the sourcing file |
+| `#{d:current_file}/x.conf` | ✗ | **Formats are not expanded** |
 
 The last row is why the install path cannot be auto-detected, and why
 `~/.config/tmux` is written out in full. `setenv` does not help either — it
