@@ -10,12 +10,14 @@ macOS · Linux · WSL2 · MSYS2/Cygwin
 [![CI](https://github.com/MichaelWeissDEV/tmux-config/actions/workflows/ci.yml/badge.svg)](https://github.com/MichaelWeissDEV/tmux-config/actions/workflows/ci.yml)
 [![Docs](https://readthedocs.org/projects/tmux-config/badge/?version=latest)](https://tmux-config.readthedocs.io/en/latest/)
 [![Dotfiles Hub](https://img.shields.io/badge/ecosystem-arch--dotfiles-1793D1?logo=arch-linux&logoColor=white)](https://arch-dotfiles.readthedocs.io/en/latest/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Theme: Catppuccin Mocha](https://img.shields.io/badge/theme-Catppuccin%20Mocha-cba6f7)](https://github.com/catppuccin/catppuccin)
 [![tmux 3.3+](https://img.shields.io/badge/tmux-3.3%2B-1BB91F?logo=tmux&logoColor=white)](https://github.com/tmux/tmux)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 [**Documentation**](https://tmux-config.readthedocs.io/en/latest/) ·
 [Installation](https://tmux-config.readthedocs.io/en/latest/getting-started/installation/) ·
-[Configuration](https://tmux-config.readthedocs.io/en/latest/configuration/) ·
+[Configuration Guide](https://tmux-config.readthedocs.io/en/latest/configuration/) ·
+[Configuration File (`tmux.conf`)](tmux.conf) ·
 [Keybindings](https://tmux-config.readthedocs.io/en/latest/keybindings/quick/) ·
 [Arch Dotfiles Hub](https://arch-dotfiles.readthedocs.io/en/latest/)
 
@@ -135,22 +137,15 @@ tmux **3.3+**, and a UTF-8 locale. No Nerd Font, no Python, no plugin manager.
 
 ## Layout
 
-```
-tmux.conf              loader
-config/                core: options, keys, copy mode, clipboard, theme, status
-capabilities/          detect.conf, terminal.conf, symbols.conf
-terminals/             targeted fixes for known-broken terminals
-plugins/               one adapter per plugin
-vendor/                vendored plugins (git subtree) — no plugin manager
-vendor-manifest/       upstream, pinned revision, licence per plugin
-keys/                  the key registry: upstream (captured from tmux),
-                       custom, and the generated merge
-local-options.conf     yours, gitignored, loaded BEFORE the modules
-local.conf             yours, gitignored, loaded last
-scripts/               info · doctor · check · check-key-conflicts
-                       key-explorer · update-vendor · doc generators
-tests/run              behaviour tests across TERM/locale/SSH environments
-```
+| Path | Role |
+| :--- | :--- |
+| **[`tmux.conf`](tmux.conf)** | Main configuration loader (`source-file` chain) |
+| **[`config/`](config/)** | Core modules: options, key tables, copy mode, clipboard, status line |
+| **[`themes/`](themes/)** | Theme definitions (including `catppuccin-mocha.conf`) |
+| **[`capabilities/`](capabilities/)** | Auto-detection: `detect.conf`, `terminal.conf`, `symbols.conf` |
+| **[`plugins/`](plugins/)** | Adapters for vendored plugins |
+| **[`vendor/`](vendor/)** | Vendored plugins via Git Subtree (no TPM needed) |
+| **[`scripts/`](scripts/)** | Diagnostic tools (`info`, `doctor`, `check`), key explorer |
 
 ## Development
 
