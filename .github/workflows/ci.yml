@@ -98,7 +98,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-docs.txt
       - name: Build docs (strict — broken links fail)
-        run: mkdocs build --strict
+        run: make -C docs dirhtml
 
       # The keymap and options pages are generated from the registry. If a
       # contributor changed a binding without regenerating them, the published

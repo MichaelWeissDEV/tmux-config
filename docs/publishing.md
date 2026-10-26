@@ -31,20 +31,20 @@ documentation build.
 1. Sign in at [readthedocs.org](https://readthedocs.org) with GitHub.
 2. **Import a Project** → pick `tmux-config`.
 3. Nothing to configure: `.readthedocs.yaml` in the repository root already
-   pins Ubuntu 24.04, Python 3.12, MkDocs and `fail_on_warning: true`.
+   pins Ubuntu 24.04, Python 3.12, Sphinx and `fail_on_warning: true`.
 4. Build.
 
 ```{warning} If the slug is taken
 Read the Docs project names are global. If `tmux-config` is unavailable you
 will get something like `tmux-config-mw`, and the published URL changes.
-Update `site_url` in `mkdocs.yml`, the badge and links in `README.md`, and
+Update the badge and links in `README.md` and
 the links in `docs/index.md` to match.
 ```
 ### Why the build cannot silently rot
 
-`fail_on_warning: true` plus the `validation:` block in `mkdocs.yml` turn broken
-internal links and missing anchors into build failures rather than a published
-site full of dead links.
+`fail_on_warning: true` makes Sphinx warnings fail the Read the Docs build.
+CI and local builds use the same dependencies and `make -C docs dirhtml`,
+which also treats warnings as errors.
 
 The keybindings page and the options reference are **generated**. CI regenerates
 them and diffs against what is committed, so a config change without a
@@ -106,7 +106,7 @@ Read the Docs can then publish versioned docs alongside `latest`.
 ```bash
 ./scripts/check      # static checks
 ./tests/run          # behaviour tests
-mkdocs build --strict
+make -C docs dirhtml
 ```
 
 And once, on a clean machine, the thing users will actually do:

@@ -1,14 +1,15 @@
 # Options reference
 
-```{note} This page is generated
+:::{note} This page is generated
 Produced from `config/00-options.conf` by `scripts/gen-options.py`,
 so it cannot drift from the actual defaults. Regenerate with:
 
 ```bash
 ./scripts/gen-options.py > docs/reference/options.md
 ```
-```
-Every option below is set in [`config/00-options.conf`](../configuration/index.md). Change a value there, or override it in `local.conf`, then press ++ctrl+b<kbd> </kbd>r++.
+:::
+
+Every option below is set in [`config/00-options.conf`](../configuration/index.md). Override it in `local-options.conf`, then press <kbd>Ctrl</kbd>+<kbd>b</kbd> <kbd>R</kbd> to reload.
 
 ## All options at a glance
 
@@ -26,7 +27,6 @@ Every option below is set in [`config/00-options.conf`](../configuration/index.m
 | [`@cfg_focus_events`](#cfg-focus-events) | `on` | `on` · `off` |
 | [`@cfg_vi_pane_keys`](#cfg-vi-pane-keys) | `on` | `on` · `off` |
 | [`@cfg_alt_window_keys`](#cfg-alt-window-keys) | `on` | `on` · `off` |
-| [`@cfg_plugin_navigator`](#cfg-plugin-navigator) | `off` | `on` · `off` |
 | [`@cfg_key_explorer_fzf`](#cfg-key-explorer-fzf) | `off` | `on` · `off` |
 | [`@cfg_mode_keys`](#cfg-mode-keys) | `vi` | `vi` · `emacs` |
 | [`@cfg_system_clipboard`](#cfg-system-clipboard) | `on` | `on` · `off` |
@@ -56,7 +56,8 @@ Every option below is set in [`config/00-options.conf`](../configuration/index.m
 
 ## Prefix
 
-### `@cfg_prefix` { #cfg-prefix }
+(cfg-prefix)=
+### `@cfg_prefix`
 
 ```tmux
 set -g @cfg_prefix "C-b"
@@ -68,7 +69,8 @@ The prefix key. "C-b" is the tmux default and does not collide with anything.
 "C-a" is the classic screen-style choice — comfier to reach, but it takes over
 "jump to start of line" in every shell and readline app inside your panes.
 
-### `@cfg_keep_default_prefix` { #cfg-keep-default-prefix }
+(cfg-keep-default-prefix)=
+### `@cfg_keep_default_prefix`
 
 ```tmux
 set -g @cfg_keep_default_prefix "off"
@@ -81,7 +83,8 @@ Useful while your fingers are still relearning. Costs you nothing otherwise.
 
 ## Behaviour
 
-### `@cfg_mouse` { #cfg-mouse }
+(cfg-mouse)=
+### `@cfg_mouse`
 
 ```tmux
 set -g @cfg_mouse "on"
@@ -92,7 +95,8 @@ set -g @cfg_mouse "on"
 Mouse: click to select panes/windows, drag borders to resize, scroll to enter
 copy mode. Turning this off gives you back your terminal's native selection.
 
-### `@cfg_base_index` { #cfg-base-index }
+(cfg-base-index)=
+### `@cfg_base_index`
 
 ```tmux
 set -g @cfg_base_index "1"
@@ -103,7 +107,8 @@ set -g @cfg_base_index "1"
 Window/pane numbering start. 1 keeps the number keys aligned with the keyboard
 row; 0 is the tmux default.
 
-### `@cfg_renumber_windows` { #cfg-renumber-windows }
+(cfg-renumber-windows)=
+### `@cfg_renumber_windows`
 
 ```tmux
 set -g @cfg_renumber_windows "off"
@@ -115,7 +120,8 @@ Close a gap in the window list when a window is closed.
 off = a window keeps its number for the whole session (muscle memory stays
 valid); on = numbers are always contiguous.
 
-### `@cfg_automatic_rename` { #cfg-automatic-rename }
+(cfg-automatic-rename)=
+### `@cfg_automatic_rename`
 
 ```tmux
 set -g @cfg_automatic_rename "off"
@@ -126,7 +132,8 @@ set -g @cfg_automatic_rename "off"
 Let running programs rename your windows. Off means the name you set stays
 set — recommended, otherwise every `cd` or command rewrites your window list.
 
-### `@cfg_history_limit` { #cfg-history-limit }
+(cfg-history-limit)=
+### `@cfg_history_limit`
 
 ```tmux
 set -g @cfg_history_limit "10000"
@@ -136,7 +143,8 @@ Scrollback lines per pane. Each pane reserves this independently, so very
 large values cost real memory (roughly: lines x panes x line length).
 10000 is a good balance; 50000+ is noticeable with many panes open.
 
-### `@cfg_escape_time` { #cfg-escape-time }
+(cfg-escape-time)=
+### `@cfg_escape_time`
 
 ```tmux
 set -g @cfg_escape_time "10"
@@ -146,7 +154,8 @@ Time in ms tmux waits after ESC to see if it starts an escape sequence.
 Keep this LOW. The tmux default of 500ms is what makes Neovim feel laggy
 when leaving insert mode. 10 is responsive and still safe over SSH.
 
-### `@cfg_repeat_time` { #cfg-repeat-time }
+(cfg-repeat-time)=
+### `@cfg_repeat_time`
 
 ```tmux
 set -g @cfg_repeat_time "500"
@@ -154,7 +163,8 @@ set -g @cfg_repeat_time "500"
 
 How long (ms) a `-r` binding stays repeatable without re-pressing the prefix.
 
-### `@cfg_focus_events` { #cfg-focus-events }
+(cfg-focus-events)=
+### `@cfg_focus_events`
 
 ```tmux
 set -g @cfg_focus_events "on"
@@ -167,7 +177,8 @@ Forward focus events to programs inside panes. Neovim needs this for
 
 ## Keybindings
 
-### `@cfg_vi_pane_keys` { #cfg-vi-pane-keys }
+(cfg-vi-pane-keys)=
+### `@cfg_vi_pane_keys`
 
 ```tmux
 set -g @cfg_vi_pane_keys "on"
@@ -177,7 +188,8 @@ set -g @cfg_vi_pane_keys "on"
 
 vi-style hjkl for moving between panes (with prefix).
 
-### `@cfg_alt_window_keys` { #cfg-alt-window-keys }
+(cfg-alt-window-keys)=
+### `@cfg_alt_window_keys`
 
 ```tmux
 set -g @cfg_alt_window_keys "on"
@@ -191,20 +203,8 @@ every program running inside your panes. Notably it breaks Alt+number tab
 switching in terminal browsers, some TUI editors, and Windows Terminal's own
 tab shortcuts. Set to "off" if you live in those.
 
-### `@cfg_plugin_navigator` { #cfg-plugin-navigator }
-
-```tmux
-set -g @cfg_plugin_navigator "off"
-```
-
-**Accepted values:** `on` · `off`
-
-Seamless pane<->split navigation with Ctrl+hjkl shared between tmux and
-Neovim. Requires the christoomey/vim-tmux-navigator plugin on the Neovim side.
-See docs/plugins/available.md#neovim-integration — turning this on without the Neovim
-half will make Ctrl+hjkl do nothing useful inside Neovim.
-
-### `@cfg_key_explorer_fzf` { #cfg-key-explorer-fzf }
+(cfg-key-explorer-fzf)=
+### `@cfg_key_explorer_fzf`
 
 ```tmux
 set -g @cfg_key_explorer_fzf "off"
@@ -218,7 +218,8 @@ fzf missing, the Explorer uses its own built-in search and behaves the same.
 
 ## Copy mode & clipboard
 
-### `@cfg_mode_keys` { #cfg-mode-keys }
+(cfg-mode-keys)=
+### `@cfg_mode_keys`
 
 ```tmux
 set -g @cfg_mode_keys "vi"
@@ -229,7 +230,8 @@ set -g @cfg_mode_keys "vi"
 vi or emacs keys inside copy mode. This affects copy mode ONLY — it has no
 effect on Neovim or on your shell's line editor.
 
-### `@cfg_system_clipboard` { #cfg-system-clipboard }
+(cfg-system-clipboard)=
+### `@cfg_system_clipboard`
 
 ```tmux
 set -g @cfg_system_clipboard "on"
@@ -240,7 +242,8 @@ set -g @cfg_system_clipboard "on"
 Copy to the OS clipboard, not just tmux's internal buffer.
 The right tool is picked per platform (pbcopy / wl-copy / xclip / clip.exe).
 
-### `@cfg_osc52` { #cfg-osc52 }
+(cfg-osc52)=
+### `@cfg_osc52`
 
 ```tmux
 set -g @cfg_osc52 "on"
@@ -253,7 +256,8 @@ This is what makes copying work when tmux runs on a remote host over SSH.
 Your terminal emulator must support OSC 52 (most modern ones do; see
 docs/reference/troubleshooting.md#clipboard for a compatibility list).
 
-### `@cfg_copy_stays_in_mode` { #cfg-copy-stays-in-mode }
+(cfg-copy-stays-in-mode)=
+### `@cfg_copy_stays_in_mode`
 
 ```tmux
 set -g @cfg_copy_stays_in_mode "off"
@@ -266,7 +270,8 @@ jumping straight back to the prompt.
 
 ## These three are TRI-STATE:
 
-### `@cfg_truecolor` { #cfg-truecolor }
+(cfg-truecolor)=
+### `@cfg_truecolor`
 
 ```tmux
 set -g @cfg_truecolor "auto"
@@ -278,7 +283,8 @@ set -g @cfg_truecolor "auto"
 Forcing "on" is occasionally right behind a serial link or another
 multiplexer, where a capable terminal exports nothing that proves it.
 
-### `@cfg_symbols` { #cfg-symbols }
+(cfg-symbols)=
+### `@cfg_symbols`
 
 ```tmux
 set -g @cfg_symbols "auto"
@@ -292,7 +298,8 @@ character with "_", so a Unicode status bar degrades into unreadable noise.
 On "auto" the locale is checked and ASCII is used when UTF-8 is absent.
 No Nerd Font is required by any setting.
 
-### `@cfg_extended_keys` { #cfg-extended-keys }
+(cfg-extended-keys)=
+### `@cfg_extended_keys`
 
 ```tmux
 set -g @cfg_extended_keys "auto"
@@ -308,7 +315,8 @@ the failure mode is keys silently doing nothing.
 
 ## Appearance
 
-### `@cfg_theme` { #cfg-theme }
+(cfg-theme)=
+### `@cfg_theme`
 
 ```tmux
 set -g @cfg_theme "catppuccin-mocha"
@@ -319,7 +327,8 @@ set -g @cfg_theme "catppuccin-mocha"
 Colour scheme. Files live in config/themes/.
 Adding your own is a 20-line file — see docs/customization/themes.md.
 
-### `@cfg_status_position` { #cfg-status-position }
+(cfg-status-position)=
+### `@cfg_status_position`
 
 ```tmux
 set -g @cfg_status_position "bottom"
@@ -329,7 +338,8 @@ set -g @cfg_status_position "bottom"
 
 Status bar position.
 
-### `@cfg_status_interval` { #cfg-status-interval }
+(cfg-status-interval)=
+### `@cfg_status_interval`
 
 ```tmux
 set -g @cfg_status_interval "5"
@@ -342,7 +352,8 @@ it forks a process at this interval, on every session. 5 is comfortable.
 Only go to 1 if you add a seconds-precision clock, and never combine 1 with
 `#()`. See docs/configuration/index.md#status-bar-performance.
 
-### `@cfg_status_style` { #cfg-status-style }
+(cfg-status-style)=
+### `@cfg_status_style`
 
 ```tmux
 set -g @cfg_status_style "default"
@@ -353,7 +364,8 @@ minimal  — session name + windows only. Fastest, quietest.
 default  — adds clock and date on the right.
 detailed — adds hostname and pane/zoom indicators.
 
-### `@cfg_show_session` { #cfg-show-session }
+(cfg-show-session)=
+### `@cfg_show_session`
 
 ```tmux
 set -g @cfg_show_session "on"
@@ -363,7 +375,8 @@ set -g @cfg_show_session "on"
 
 Show the session name block on the left.
 
-### `@cfg_clock_format` { #cfg-clock-format }
+(cfg-clock-format)=
+### `@cfg_clock_format`
 
 ```tmux
 set -g @cfg_clock_format "%H:%M"
@@ -372,7 +385,8 @@ set -g @cfg_clock_format "%H:%M"
 Clock format on the right. Standard strftime.
 examples: "%H:%M" (24h) | "%I:%M %p" (12h)
 
-### `@cfg_date_format` { #cfg-date-format }
+(cfg-date-format)=
+### `@cfg_date_format`
 
 ```tmux
 set -g @cfg_date_format "%d.%m.%Y"
@@ -381,7 +395,8 @@ set -g @cfg_date_format "%d.%m.%Y"
 Date format on the right. Empty string "" hides the date entirely.
 examples: "%d.%m.%Y" (DE) | "%Y-%m-%d" (ISO) | "%a %d %b" | ""
 
-### `@cfg_pane_border_lines` { #cfg-pane-border-lines }
+(cfg-pane-border-lines)=
+### `@cfg_pane_border_lines`
 
 ```tmux
 set -g @cfg_pane_border_lines "single"
@@ -392,7 +407,8 @@ set -g @cfg_pane_border_lines "single"
 Pane border line style. "single" is universally safe. The heavier styles need
 a font with good box-drawing glyphs and can look broken in some terminals.
 
-### `@cfg_dim_inactive` { #cfg-dim-inactive }
+(cfg-dim-inactive)=
+### `@cfg_dim_inactive`
 
 ```tmux
 set -g @cfg_dim_inactive "off"
@@ -405,7 +421,8 @@ Costs nothing, but looks wrong on themes with low contrast.
 
 ## Plugins
 
-### `@cfg_plugins` { #cfg-plugins }
+(cfg-plugins)=
+### `@cfg_plugins`
 
 ```tmux
 set -g @cfg_plugins "off"
@@ -415,7 +432,8 @@ set -g @cfg_plugins "off"
 
 Master switch. With this off, no adapter is even sourced.
 
-### `@cfg_plugin_resurrect` { #cfg-plugin-resurrect }
+(cfg-plugin-resurrect)=
+### `@cfg_plugin_resurrect`
 
 ```tmux
 set -g @cfg_plugin_resurrect "off"
@@ -426,7 +444,8 @@ set -g @cfg_plugin_resurrect "off"
 Save and restore sessions, windows, panes and layouts across a reboot.
 Manual save = prefix + Ctrl-s, manual restore = prefix + Ctrl-r.
 
-### `@cfg_plugin_continuum` { #cfg-plugin-continuum }
+(cfg-plugin-continuum)=
+### `@cfg_plugin_continuum`
 
 ```tmux
 set -g @cfg_plugin_continuum "off"
@@ -441,7 +460,8 @@ exactly the hidden behaviour this project avoids.
 Keeps a background process alive for the life of the server and writes to
 disk on a timer. Deliberately opt-in.
 
-### `@cfg_plugin_navigator` { #cfg-plugin-navigator }
+(cfg-plugin-navigator)=
+### `@cfg_plugin_navigator`
 
 ```tmux
 set -g @cfg_plugin_navigator "off"
@@ -455,7 +475,8 @@ WARNING: this is the only shipped plugin that intercepts application input.
 It binds Ctrl-hjkl globally and forwards them when the pane runs vim/nvim.
 `scripts/check` reports that interception — correctly. See docs/integration/neovim.md.
 
-### `@cfg_plugin_open` { #cfg-plugin-open }
+(cfg-plugin-open)=
+### `@cfg_plugin_open`
 
 ```tmux
 set -g @cfg_plugin_open "off"
@@ -465,7 +486,8 @@ set -g @cfg_plugin_open "off"
 
 Open a highlighted file or URL from copy mode (`o`, and `Ctrl-o` in $EDITOR).
 
-### `@cfg_plugin_logging` { #cfg-plugin-logging }
+(cfg-plugin-logging)=
+### `@cfg_plugin_logging`
 
 ```tmux
 set -g @cfg_plugin_logging "off"
@@ -477,7 +499,8 @@ Log a pane's output to a file, capture the screen, or dump full history.
 Bindings: prefix+Shift-P toggles logging, prefix+Alt-P screen-captures,
 prefix+Alt-Shift-P saves the complete history.
 
-### `@cfg_plugin_extrakto` { #cfg-plugin-extrakto }
+(cfg-plugin-extrakto)=
+### `@cfg_plugin_extrakto`
 
 ```tmux
 set -g @cfg_plugin_extrakto "off"
@@ -489,7 +512,8 @@ Fuzzy-find and copy anything visible on screen — paths, URLs, hashes, words.
 Needs `fzf` on PATH; you get a message if it is missing rather than a
 binding that silently does nothing.
 
-### `@cfg_plugin_fpp` { #cfg-plugin-fpp }
+(cfg-plugin-fpp)=
+### `@cfg_plugin_fpp`
 
 ```tmux
 set -g @cfg_plugin_fpp "off"
@@ -499,7 +523,8 @@ set -g @cfg_plugin_fpp "off"
 
 Pick a file path out of pane output and open it. Needs `fpp` on PATH.
 
-### `@cfg_plugin_sessionist` { #cfg-plugin-sessionist }
+(cfg-plugin-sessionist)=
+### `@cfg_plugin_sessionist`
 
 ```tmux
 set -g @cfg_plugin_sessionist "off"
@@ -508,6 +533,5 @@ set -g @cfg_plugin_sessionist "off"
 **Accepted values:** `on` · `off`
 
 Extra session management from inside the current session.
-Note: binds prefix+S, which this config already uses for choose-tree.
-`scripts/check` reports the clash.
+Binds prefix+S, replacing tmux's choose-tree with its session switcher.
 

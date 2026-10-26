@@ -141,7 +141,7 @@ tmux **3.3+**, and a UTF-8 locale. No Nerd Font, no Python, no plugin manager.
 | :--- | :--- |
 | **[`tmux.conf`](tmux.conf)** | Main configuration loader (`source-file` chain) |
 | **[`config/`](config/)** | Core modules: options, key tables, copy mode, clipboard, status line |
-| **[`themes/`](themes/)** | Theme definitions (including `catppuccin-mocha.conf`) |
+| **[`config/themes/`](config/themes/)** | Theme definitions (including `catppuccin-mocha.conf`) |
 | **[`capabilities/`](capabilities/)** | Auto-detection: `detect.conf`, `terminal.conf`, `symbols.conf` |
 | **[`plugins/`](plugins/)** | Adapters for vendored plugins |
 | **[`vendor/`](vendor/)** | Vendored plugins via Git Subtree (no TPM needed) |
@@ -160,7 +160,8 @@ tmux **3.3+**, and a UTF-8 locale. No Nerd Font, no Python, no plugin manager.
 ./scripts/gen-options.py > docs/reference/options.md  # after changing options
 ./scripts/gen-upstream-keys                           # capture this tmux's keymap
 
-pip install -r requirements-docs.txt && mkdocs serve  # preview the docs
+pip install -r requirements-docs.txt
+make -C docs dirhtml   # strict documentation build, like Read the Docs
 ```
 
 `check` verifies that no Ctrl key is globally intercepted, that no key is bound

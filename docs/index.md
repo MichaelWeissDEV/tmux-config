@@ -40,7 +40,7 @@ set -g @cfg_prefix "C-b"
 set -g @cfg_mouse  "on"
 ```
 
-Change a value in `config/00-options.conf`, press <kbd>Ctrl+b</kbd> <kbd>r</kbd>, and it applies. You do not need to know
+Change a value in `local-options.conf`, press <kbd>Ctrl+b</kbd> <kbd>R</kbd>, and it applies. You do not need to know
 which tmux option, which key table, or which of the seven `pane-*-style`
 settings implements it.
 

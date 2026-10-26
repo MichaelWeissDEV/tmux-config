@@ -77,7 +77,7 @@ row "plugin system" "$(g @cfg_plugins)"
 for p in resurrect continuum; do
   row "  $p" "$(g "@cfg_plugin_$p")"
 done
-row "  vim navigator" "$(g @cfg_vim_navigator)"
+row "  vim navigator" "$(g @cfg_plugin_navigator)"
 
 sec "Key bindings"
 row "prefix table"  "$(t list-keys -T prefix 2>/dev/null | wc -l | tr -d ' ') bound"
