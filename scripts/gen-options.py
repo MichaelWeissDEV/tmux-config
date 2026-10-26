@@ -115,17 +115,19 @@ def main():
 
     print("# Options reference")
     print()
-    print("!!! info \"This page is generated\"")
-    print("    Produced from `config/00-options.conf` by `scripts/gen-options.py`,")
-    print("    so it cannot drift from the actual defaults. Regenerate with:")
+    print(":::{note} This page is generated")
+    print("Produced from `config/00-options.conf` by `scripts/gen-options.py`,")
+    print("so it cannot drift from the actual defaults. Regenerate with:")
     print()
-    print("    ```bash")
-    print("    ./scripts/gen-options.py > docs/reference/options.md")
-    print("    ```")
+    print("```bash")
+    print("./scripts/gen-options.py > docs/reference/options.md")
+    print("```")
+    print(":::")
     print()
     print("Every option below is set in "
-          "[`config/00-options.conf`](../configuration/index.md). Change a value there, "
-          "or override it in `local.conf`, then press ++ctrl+b++ ++r++.")
+          "[`config/00-options.conf`](../configuration/index.md). Override it in "
+          "`local-options.conf`, then press <kbd>Ctrl</kbd>+<kbd>b</kbd> "
+          "<kbd>R</kbd> to reload.")
     print()
 
     # --- summary table ---------------------------------------------------
@@ -155,7 +157,8 @@ def main():
                 main._last = o["section"]
 
         anchor = o["name"].replace("_", "-").lstrip("@")
-        print(f"### `{o['name']}` {{ #{anchor} }}")
+        print(f"({anchor})=")
+        print(f"### `{o['name']}`")
         print()
         print("```tmux")
         print(f'set -g {o["name"]} "{o["default"]}"')

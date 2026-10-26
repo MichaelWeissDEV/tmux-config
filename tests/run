@@ -302,6 +302,11 @@ if [ -x "$ROOT/scripts/check-key-conflicts" ]; then
 fi
 
 # ------------------------------------------------------------------------------
+if ! "$ROOT/tests/window-status"; then
+  FAIL=$((FAIL+1))
+fi
+
+# ------------------------------------------------------------------------------
 printf '\nOption round-trip\n'
 # ------------------------------------------------------------------------------
 build; opt @cfg_history_limit 4242; opt @cfg_escape_time 25; opt @cfg_base_index 0

@@ -1,0 +1,140 @@
+#!/usr/bin/env sh
+# Exercise real window alerts and the styles resolved by the shipped format.
+set -eu
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+STAGE="$(mktemp -d)"
+SOCK="window-status-$$"
+CLIENT_PID=""
+PASS=0; FAIL=0
+cleanup() {
+  tmux -L "$SOCK" kill-server 2>/dev/null || true
+  if [ -n "$CLIENT_PID" ]; then
+    wait "$CLIENT_PID" 2>/dev/null || true
+  fi
+  rm -rf "$STAGE"
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+for d in config capabilities terminals plugins scripts; do
+  cp -R "$ROOT/$d" "$STAGE/$d"
+done
+for f in "$ROOT/tmux.conf" "$STAGE"/config/*.conf "$STAGE"/capabilities/*.conf; do
+  sed "s|~/.config/tmux|$STAGE|g; s|\$HOME/.config/tmux|$STAGE|g" "$f" > "$STAGE/rewrite"
+  if [ "$f" = "$ROOT/tmux.conf" ]; then
+    mv "$STAGE/rewrite" "$STAGE/tmux.conf"
+  else
+    mv "$STAGE/rewrite" "$f"
+  fi
+done
+
+t() { tmux -L "$SOCK" "$@"; }
+assert() {
+  if [ "$2" = "$3" ]; then
+    PASS=$((PASS+1)); printf '  ok    %s\n' "$1"
+  else
+    FAIL=$((FAIL+1))
+    printf '  FAIL  %s: expected "%s", got "%s"\n' "$1" "$2" "$3"
+  fi
+}
+flag() { t display-message -p -t "$WINDOW" "#{window_${1}_flag}"; }
+wait_flag() {
+  attempts=0
+  while [ "$(flag "$1")" != 1 ] && [ "$attempts" -lt 30 ]; do
+    sleep 0.1
+    attempts=$((attempts+1))
+  done
+  assert "$1 flag set by pane output" 1 "$(flag "$1")"
+}
+
+# Interpret style changes up to a label instead of asserting a particular
+# spelling of the format. This catches a later style overriding an alert.
+style() {
+  t display-message -p -t "$WINDOW" '#{E:window-status-format}' |
+    awk -v label="$1" '
+      function result() { print fg "," (bold ? "bold" : "normal") }
+      {
+        text=$0
+        while (match(text, /#\[[^]]*\]/)) {
+          if (index(substr(text, 1, RSTART-1), label)) { result(); exit }
+          n=split(substr(text, RSTART+2, RLENGTH-3), attrs, ",")
+          for (i=1; i<=n; i++) {
+            if (attrs[i] ~ /^fg=/) fg=substr(attrs[i], 4)
+            if (attrs[i] == "bold") bold=1
+            if (attrs[i] == "noattr" || attrs[i] == "nobold") bold=0
+          }
+          text=substr(text, RSTART+RLENGTH)
+        }
+        if (index(text, label)) result()
+      }'
+}
+
+printf '\nWindow status alerts\n'
+env TERM=xterm-256color LANG=en_US.UTF-8 \
+  tmux -L "$SOCK" -f /dev/null new-session -d -s alerts -n current 'cat'
+t source-file "$STAGE/tmux.conf"
+t set -g default-shell /bin/sh
+# An attached control client gives alert clearing the same semantics as an
+# interactive session, without requiring a terminal emulator in CI.
+mkfifo "$STAGE/client-in"
+exec 3<>"$STAGE/client-in"
+t -C attach-session -t alerts <"$STAGE/client-in" >"$STAGE/client-out" 2>&1 &
+CLIENT_PID=$!
+attempts=0
+while [ "$(t display-message -p -t alerts '#{session_attached}')" = 0 ] && [ "$attempts" -lt 30 ]; do
+  sleep 0.1
+  attempts=$((attempts+1))
+done
+assert "test client is attached" 1 "$(t display-message -p -t alerts '#{session_attached}')"
+assert "activity is quiet" none "$(t show -gv activity-action)"
+assert "bells are quiet" none "$(t show -gv bell-action)"
+assert "bell monitoring is enabled" on "$(t show -gwv monitor-bell)"
+
+# A small event loop gives each assertion real pane output, with no shell
+# prompt or startup messages that could accidentally set the activity flag.
+WINDOW="$(t new-window -dP -F '#{window_id}' -n background \
+  'stty -echo; tmux wait-for -S window-status-ready; while IFS= read -r event; do case "$event" in activity) printf "activity\n" ;; bell) printf "\007" ;; esac; done')"
+t wait-for window-status-ready
+INDEX="$(t display-message -p -t "$WINDOW" '#I')"
+
+for theme in catppuccin-mocha catppuccin-latte tokyonight nord gruvbox-dark rose-pine; do
+  t source-file "$STAGE/config/themes/$theme.conf"
+  # Reloading must replace legacy reverse/bold styles as well as the format.
+  t set -g window-status-activity-style reverse
+  t set -g window-status-bell-style reverse,bold
+  t source-file "$STAGE/config/60-status.conf"
+  assert "$theme: legacy activity style cleared" none "$(t show -gwv window-status-activity-style)"
+  assert "$theme: legacy bell style cleared" none "$(t show -gwv window-status-bell-style)"
+
+  t select-window -t "$WINDOW"
+  t select-window -t alerts:current
+  assert "$theme: normal number" "$(t show -gv @thm_subtle),normal" "$(style "$INDEX ")"
+  t send-keys -t "$WINDOW" activity Enter
+  wait_flag activity
+  assert "$theme: activity number" "$(t show -gv @thm_warn),normal" "$(style "$INDEX ")"
+  assert "$theme: activity name stays muted" "$(t show -gv @thm_muted),normal" "$(style background)"
+
+  t send-keys -t "$WINDOW" bell Enter
+  wait_flag bell
+  assert "$theme: activity and bell are both pending" 1 "$(flag activity)"
+  assert "$theme: bell wins over activity" "$(t show -gv @thm_urgent),bold" "$(style "$INDEX ")"
+  assert "$theme: bell name stays muted and not bold" "$(t show -gv @thm_muted),normal" "$(style background)"
+  t select-window -t "$WINDOW"
+  t select-window -t alerts:current
+  assert "$theme: visiting clears activity" 0 "$(flag activity)"
+  assert "$theme: visiting clears bell" 0 "$(flag bell)"
+  assert "$theme: visited number returns to normal" "$(t show -gv @thm_subtle),normal" "$(style "$INDEX ")"
+
+  t set -w -t "$WINDOW" monitor-activity off
+  t send-keys -t "$WINDOW" bell Enter
+  wait_flag bell
+  assert "$theme: bell-only event has no activity flag" 0 "$(flag activity)"
+  assert "$theme: bell works without activity monitoring" "$(t show -gv @thm_urgent),bold" "$(style "$INDEX ")"
+  t select-window -t "$WINDOW"
+  t select-window -t alerts:current
+  t set -w -t "$WINDOW" monitor-activity on
+done
+
+printf '\n%d window-status checks passed, %d failed\n' "$PASS" "$FAIL"
+[ "$FAIL" -eq 0 ]

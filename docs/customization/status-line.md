@@ -27,6 +27,13 @@ set -g status-left  " #S "
 set -g window-status-current-format " #I:#W "
 ```
 
+The shipped `window-status-format` colours each window number explicitly.
+Changing `window-status-activity-style` or `window-status-bell-style` alone
+cannot override those inline colours. For alert colours, override `@thm_warn`
+(activity) and `@thm_urgent` (bell) in `local.conf`, or replace the format using
+`#{window_activity_flag}` and `#{window_bell_flag}`. Check the bell flag first
+so activity cannot overwrite it when both are pending.
+
 ## Adding a shell command
 
 This is where status lines get expensive. `#()` forks a process **every

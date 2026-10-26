@@ -57,6 +57,11 @@ is checked and ASCII is used when UTF-8 is absent.
 
 ## Colours
 
+Background window numbers use the theme's warning colour for unread activity
+and its urgent colour, in bold, for a bell. A bell takes precedence when both
+are pending. Window names stay muted; visiting a window clears its alerts.
+Both monitors are enabled, but alerts produce no terminal beep or message.
+
 The bar follows your [theme](../customization/themes.md). To change only the
 bar, override the theme variables it reads in your `local.conf` — see
 [customising the status line](../customization/status-line.md).

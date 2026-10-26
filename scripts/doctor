@@ -302,7 +302,7 @@ if [ -z "$UNSAFE" ]; then
   pass "no Neovim-critical key is globally intercepted"
 else
   warn "globally bound, will not reach Neovim:$UNSAFE" \
-       "Expected only if you enabled @cfg_vim_navigator." \
+       "Expected only if you enabled @cfg_plugin_navigator." \
        "That plugin routes these keys deliberately; see docs/integration/neovim.md."
 fi
 

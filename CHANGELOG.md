@@ -11,6 +11,24 @@ setting. Renamed options and changed defaults count. New opt-in features do not.
 
 ## [Unreleased]
 
+### Fixed
+
+- Background window numbers now show activity in the theme's warning colour
+  and bells in its urgent colour and bold. Bell takes precedence when both
+  alerts are pending; inline format colours no longer hide the alerts (#1).
+  Reloading also clears legacy window styles that could invert the colours.
+- Documentation generators now emit Sphinx/MyST syntax, stay in sync with the
+  committed pages, and document `local-options.conf` and uppercase `R` for
+  reloads. CI uses the same Sphinx build and dependencies as Read the Docs.
+- Navigator diagnostics now read `@cfg_plugin_navigator`; its duplicate option
+  definition and outdated theme paths have been removed.
+
+### Changed
+
+- Activity alerts no longer ring the terminal bell, matching the documented
+  quiet default. Bell monitoring is explicitly enabled for the window list;
+  audible and message notifications remain disabled.
+
 ### Changed — BREAKING: tmux defaults reclaimed
 
 Several bindings had quietly taken a tmux default and given it an unrelated

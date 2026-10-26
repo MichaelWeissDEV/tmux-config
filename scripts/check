@@ -32,7 +32,7 @@ printf '\ntmux-config check\n\n'
 # ------------------------------------------------------------------------------
 printf 'Syntax\n'
 SOCK="check-$$"
-tmux -L "$SOCK" new-session -d 2>/dev/null
+tmux -f /dev/null -L "$SOCK" new-session -d 2>/dev/null
 SYNTAX_BAD=0
 for f in "$ROOT"/tmux.conf "$ROOT"/config/*.conf "$ROOT"/config/themes/*.conf \
          "$ROOT"/capabilities/*.conf "$ROOT"/terminals/*.conf; do
@@ -105,7 +105,7 @@ if [ -z "$UNSAFE" ]; then
   ok "no Ctrl-based key is globally intercepted by default"
 else
   bad "globally intercepted, will not reach Neovim:$UNSAFE"
-  note "Only acceptable when @cfg_vim_navigator is on. See docs/philosophy.md."
+  note "Only acceptable when @cfg_plugin_navigator is on. See docs/philosophy.md."
 fi
 
 # ------------------------------------------------------------------------------

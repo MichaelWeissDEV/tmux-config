@@ -1,6 +1,6 @@
 # Complete keymap
 
-```{note} This page is generated
+:::{note} This page is generated
 Do not edit it by hand. `scripts/gen-docs` builds it from the key
 registry in [`keys/`](https://github.com/MichaelWeissDEV/tmux-config/tree/main/keys),
 and CI fails if the two disagree. Regenerate with:
@@ -8,7 +8,8 @@ and CI fails if the two disagree. Regenerate with:
 ```bash
 ./scripts/gen-docs
 ```
-```
+:::
+
 Every key tmux-config knows about — tmux's own defaults included. Throughout,
 **`prefix`** means the prefix key, <kbd>Ctrl</kbd>+<kbd>b</kbd> unless you
 changed `@cfg_prefix`.
