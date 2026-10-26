@@ -13,6 +13,8 @@ setting. Renamed options and changed defaults count. New opt-in features do not.
 
 ### Fixed
 
+- Prompts now clear the full status line, hiding other window names while
+  renaming a window instead of drawing the input over the window list.
 - Background window numbers now show activity in the theme's warning colour
   and bells in its urgent colour and bold. Bell takes precedence when both
   alerts are pending; inline format colours no longer hide the alerts (#1).

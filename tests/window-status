@@ -104,6 +104,11 @@ for theme in catppuccin-mocha catppuccin-latte tokyonight nord gruvbox-dark rose
   t set -g window-status-activity-style reverse
   t set -g window-status-bell-style reverse,bold
   t source-file "$STAGE/config/60-status.conf"
+  for prompt_style in message-style message-command-style; do
+    assert "$theme: $prompt_style clears the status line" \
+      "bg=$(t show -gv @thm_surface),fg=$(t show -gv @thm_fg),fill=$(t show -gv @thm_surface)" \
+      "$(t display-message -p "#{E:$prompt_style}")"
+  done
   assert "$theme: legacy activity style cleared" none "$(t show -gwv window-status-activity-style)"
   assert "$theme: legacy bell style cleared" none "$(t show -gwv window-status-bell-style)"
 
