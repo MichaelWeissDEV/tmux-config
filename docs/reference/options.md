@@ -36,6 +36,7 @@ Every option below is set in [`config/00-options.conf`](../configuration/index.m
 | [`@cfg_symbols`](#cfg-symbols) | `auto` | `auto` · `unicode` · `ascii` |
 | [`@cfg_extended_keys`](#cfg-extended-keys) | `auto` | `auto` · `on` · `off` |
 | [`@cfg_theme`](#cfg-theme) | `catppuccin-mocha` | `catppuccin-mocha` · `catppuccin-latte` · `tokyonight` · `nord` · `gruvbox-dark` · `rose-pine` · `custom` |
+| [`@cfg_theme_file`](#cfg-theme-file) | `""` | `""` · `absolute path to a tmux theme file` |
 | [`@cfg_status_position`](#cfg-status-position) | `bottom` | `bottom` · `top` |
 | [`@cfg_status_interval`](#cfg-status-interval) | `5` | — |
 | [`@cfg_status_style`](#cfg-status-style) | `default` | — |
@@ -326,6 +327,17 @@ set -g @cfg_theme "catppuccin-mocha"
 
 Colour scheme. Files live in config/themes/.
 Adding your own is a 20-line file — see docs/customization/themes.md.
+
+(cfg-theme-file)=
+### `@cfg_theme_file`
+
+```tmux
+set -g @cfg_theme_file ""
+```
+
+**Accepted values:** `""` · `absolute path to a tmux theme file`
+
+Optional complete path to a private palette file. Empty uses @cfg_theme.
 
 (cfg-status-position)=
 ### `@cfg_status_position`

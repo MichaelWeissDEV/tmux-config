@@ -53,6 +53,11 @@ command -v tmux >/dev/null 2>&1 || { printf 'tmux not found on PATH\n' >&2; exit
 VERSION="$(tmux -V | sed 's/^tmux //')"
 
 TMPD="$(mktemp -d)"
+mkdir -p "$TMPD/home"
+HOME="$TMPD/home"
+TMUX_TMPDIR="$TMPD"
+SHELL=/bin/sh
+export HOME TMUX_TMPDIR SHELL
 SOCKET="upstreamkeys-$$"
 cleanup() {
   env -u TMUX tmux -L "$SOCKET" kill-server 2>/dev/null || true
@@ -63,7 +68,7 @@ trap cleanup EXIT
 # An EMPTY REGULAR FILE — see the trap note above. Not /dev/null.
 : > "$TMPD/empty.conf"
 
-env -u TMUX -u TMUX_TMPDIR tmux -f "$TMPD/empty.conf" -L "$SOCKET" \
+env -u TMUX tmux -f "$TMPD/empty.conf" -L "$SOCKET" \
   new-session -d 2>/dev/null
 
 # Guard against capturing a contaminated server. If any personal config had

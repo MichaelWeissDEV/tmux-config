@@ -13,6 +13,11 @@ setting. Renamed options and changed defaults count. New opt-in features do not.
 
 ### Fixed
 
+- Define `@cfg_theme_file`, install all CI generator prerequisites, and preserve
+  native defaults across tmux versions in the Key Explorer. Generator failures
+  now include their diagnostics instead of only reporting stale output.
+- Test servers use private HOME/socket directories and `/bin/sh`, so checks do
+  not load the invoking user's shell startup or touch existing tmux sessions.
 - Prompts now clear the full status line, hiding other window names while
   renaming a window instead of drawing the input over the window list.
 - Background window numbers now show activity in the theme's warning colour
@@ -27,6 +32,10 @@ setting. Renamed options and changed defaults count. New opt-in features do not.
 
 ### Changed
 
+- tmux 3.8 compatibility: scratch terminal moved from `g` to `G`, pane joining
+  from `@` to `J`, and last-window from `Tab` to `B`. The original keys retain
+  their new native tmux functions. The 3.8 upstream snapshot is captured and
+  checked, not hand-maintained.
 - Activity alerts no longer ring the terminal bell, matching the documented
   quiet default. Bell monitoring is explicitly enabled for the window list;
   audible and message notifications remain disabled.

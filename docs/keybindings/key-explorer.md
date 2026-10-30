@@ -106,7 +106,7 @@ Displaces   last-window
 
 Why         Completes the vi-style h/j/k/l pane row, which is why this one
             key displaces a default. tmux binds l to last-window; that is
-            still available on prefix Tab, which this config adds for
+            still available on prefix B, which this config adds for
             exactly this reason.
 ```
 

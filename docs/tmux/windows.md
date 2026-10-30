@@ -37,7 +37,7 @@ Same key, same purpose — only the working directory differs. That makes it an
 | Key | Action | Why |
 | --- | --- | --- |
 | <kbd>prefix</kbd> <kbd>Ctrl</kbd>+<kbd>h</kbd> / <kbd>Ctrl</kbd>+<kbd>l</kbd> | previous / next window | repeatable, so you can hold and skim |
-| <kbd>prefix</kbd> <kbd>Tab</kbd> | last window | where `last-window` lives now — see below |
+| <kbd>prefix</kbd> <kbd>B</kbd> | last window | where `last-window` lives now — see below |
 | <kbd>prefix</kbd> <kbd>M-&lt;</kbd> / <kbd>M-&gt;</kbd> | move this window left / right | Alt-prefixed so tmux's own `<` and `>` menus keep working |
 | <kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | jump to a window, **no prefix** | see the tradeoff below |
 
@@ -47,7 +47,7 @@ This config binds <kbd>prefix</kbd> <kbd>l</kbd> to *select the pane to the
 right*, completing the vi-style `h`/`j`/`k`/`l` row. tmux binds it to
 `last-window`.
 
-That behaviour is not lost — it is on <kbd>prefix</kbd> <kbd>Tab</kbd>, which
+That behaviour is not lost — it is on <kbd>prefix</kbd> <kbd>B</kbd>, which
 exists for exactly this reason. And if you would rather have tmux's original:
 
 ```tmux

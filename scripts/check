@@ -27,12 +27,28 @@ bad()  { printf '  FAIL  %s\n' "$1"; FAILED=$((FAILED+1)); }
 
 printf '\ntmux-config check\n\n'
 
+T="$(mktemp -d)"
+mkdir -p "$T/home"
+HOME="$T/home"
+TMUX_TMPDIR="$T"
+SHELL=/bin/sh
+export HOME TMUX_TMPDIR SHELL
+unset TMUX
+SOCK="check-$$"
+LSOCK="checkload-$$"
+cleanup() {
+  tmux -L "$SOCK" kill-server 2>/dev/null || true
+  tmux -L "$LSOCK" kill-server 2>/dev/null || true
+  rm -rf "$T"
+}
+trap cleanup EXIT INT TERM
+
 # ------------------------------------------------------------------------------
 # 1. Syntax — `source-file -n` parses without executing
 # ------------------------------------------------------------------------------
 printf 'Syntax\n'
-SOCK="check-$$"
-tmux -f /dev/null -L "$SOCK" new-session -d 2>/dev/null
+: > "$T/empty.conf"
+tmux -f "$T/empty.conf" -L "$SOCK" new-session -d 2>/dev/null
 SYNTAX_BAD=0
 for f in "$ROOT"/tmux.conf "$ROOT"/config/*.conf "$ROOT"/config/themes/*.conf \
          "$ROOT"/capabilities/*.conf "$ROOT"/terminals/*.conf; do
@@ -47,7 +63,6 @@ done
 # ------------------------------------------------------------------------------
 # 2. Load the real config into a throwaway server
 # ------------------------------------------------------------------------------
-T="$(mktemp -d)"
 cp -R "$ROOT/config" "$T/config" 2>/dev/null
 [ -d "$ROOT/capabilities" ] && cp -R "$ROOT/capabilities" "$T/capabilities"
 [ -d "$ROOT/terminals" ] && cp -R "$ROOT/terminals" "$T/terminals"
@@ -197,19 +212,21 @@ if [ -x "$ROOT/scripts/gen-options.py" ] && [ -f "$ROOT/docs/reference/options.m
   fi
 fi
 if [ -x "$ROOT/scripts/gen-keys" ]; then
-  if "$ROOT/scripts/gen-keys" --check >/dev/null 2>&1; then
+  if DETAIL="$("$ROOT/scripts/gen-keys" --check 2>&1)"; then
     ok "merged key registry is up to date"
   else
     bad "keys/generated/keys.tsv is stale"
     note "Regenerate: ./scripts/gen-keys"
+    printf '%s\n' "$DETAIL"
   fi
 fi
 if [ -x "$ROOT/scripts/gen-docs" ]; then
-  if "$ROOT/scripts/gen-docs" --check >/dev/null 2>&1; then
+  if DETAIL="$("$ROOT/scripts/gen-docs" --check 2>&1)"; then
     ok "keybinding pages are up to date"
   else
     bad "docs/keybindings/*.md is stale"
     note "Regenerate: ./scripts/gen-docs"
+    printf '%s\n' "$DETAIL"
   fi
 fi
 if [ -x "$ROOT/scripts/gen-upstream-keys" ]; then
@@ -220,10 +237,6 @@ if [ -x "$ROOT/scripts/gen-upstream-keys" ]; then
     note "Capture one: ./scripts/gen-upstream-keys"
   fi
 fi
-
-tmux -L "$SOCK" kill-server 2>/dev/null || true
-tmux -L "$LSOCK" kill-server 2>/dev/null || true
-rm -rf "$T"
 
 printf '\n'
 if [ "$FAILED" -gt 0 ]; then printf '%d check(s) failed.\n\n' "$FAILED"; exit 1; fi

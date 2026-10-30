@@ -6,7 +6,7 @@ pkgdesc='Tmux configuration with vendored plugins'
 arch=('any')
 url='https://github.com/MichaelWeissDEV/dotfiles'
 license=('LicenseRef-arch-dotfiles-bundle')
-depends=('arch-dotfiles-core>=0.3.0' 'tmux' 'bash' 'git' 'fzf')
+depends=('arch-dotfiles-core>=0.3.0' 'tmux>=3.3' 'bash' 'git' 'fzf')
 optdepends=()
 options=('!strip')
 source=('payload.tar.gz')

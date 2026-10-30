@@ -18,7 +18,7 @@ cp ~/.config/tmux/local.conf.example ~/.config/tmux/local.conf
 A floating window over the current session. Nothing is added to your layout,
 and closing it leaves no trace. Requires tmux 3.2+.
 
-<kbd>prefix</kbd> <kbd>g</kbd> already opens a scratch shell in the current
+<kbd>prefix</kbd> <kbd>G</kbd> already opens a scratch shell in the current
 directory.
 
 #### lazygit

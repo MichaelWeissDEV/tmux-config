@@ -1,5 +1,8 @@
 # Installation
 
+For a managed Arch installation with backups and automatic updates, see
+[Arch package](../packages.md). The following instructions describe standalone setups.
+
 ## Platform support
 
 tmux is a Unix program. It uses PTYs and Unix domain sockets, neither of which
@@ -52,7 +55,7 @@ this config rejects. Check with `tmux -V` and see
 #### Arch
 
     ```bash
-    sudo pacman -S tmux
+    sudo pacman -Syu --needed tmux
     ```
 
 #### WSL2 (Windows)

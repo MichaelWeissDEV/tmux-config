@@ -54,6 +54,7 @@ settings implements it.
 
 getting-started/quick-start
 getting-started/installation
+packages
 ```
 
 ```{toctree}
@@ -188,7 +189,7 @@ configuration can remove it. See the [platform matrix](getting-started/installat
 
 This tmux setup integrates seamlessly with:
 
-- **[Arch Dotfiles Hub (`arch-dotfiles`)](https://arch-dotfiles.readthedocs.io/en/latest/)**: Central Arch Linux dotfiles hub and Hyprland desktop (managed via `adot update`, `adot update tmux`, `adot status`).
+- **[Arch Dotfiles Hub (`arch-dotfiles`)](https://arch-dotfiles.readthedocs.io/en/latest/)**: Installer and signed Pacman registry for independent configuration repositories; update with `pacman -Syu` or `adot update`.
 - **[nvim-config](https://nvim-config.readthedocs.io/en/latest/)**: Seamless navigation between tmux panes and Neovim splits via `Ctrl+h/j/k/l`.
 - **[ghostty-config](https://ghostty-config.readthedocs.io/en/latest/)** & **[kitty-config](https://kitty-config.readthedocs.io/en/latest/)**: Terminal emulators with matching Catppuccin Mocha colors and truecolor support.
 - **[vim-config](https://vim-config.readthedocs.io/en/latest/)**: Synchronized navigation and keybindings.

@@ -145,8 +145,24 @@ build_rows() {
   MODEKEYS="$(tmux_q show -gwv mode-keys 2>/dev/null)"
   case "$MODEKEYS" in vi|emacs) ;; *) MODEKEYS="" ;; esac
 
+  # Older/newer tmux releases can change defaults absent from the committed
+  # newest-version registry. Compare with that release's pristine defaults,
+  # never mislabel them as user overrides or silently accept unknown bindings.
+  STOCK="$TMP/stock.tsv"
+  : > "$STOCK"
+  if [ "$view" = active ] || [ "$view" = all ]; then
+    TMUX_VERSION="$(tmux -V | sed 's/^tmux //')"
+    SNAPSHOT="$ROOT/keys/upstream/tmux-$TMUX_VERSION.tsv"
+    if [ -f "$SNAPSHOT" ]; then
+      cat "$SNAPSHOT" > "$STOCK"
+    elif ! "$ROOT/scripts/gen-upstream-keys" --stdout > "$STOCK"; then
+      printf 'key-explorer: cannot read pristine tmux defaults\n' >&2
+      return 1
+    fi
+  fi
+
   awk -F"$TAB" -v OFS="$TAB" -v view="$view" -v quickfile="$QUICKLIST" \
-      -v modekeys="$MODEKEYS" '
+      -v modekeys="$MODEKEYS" -v stockfile="$STOCK" '
     function catorder(c) {
       if (c == "General")       return 1
       if (c == "Sessions")      return 2
@@ -231,6 +247,14 @@ build_rows() {
       close(quickfile)
     }
 
+    FILENAME == stockfile {
+      if (FNR > 4 && NF >= 5) {
+        stockcmd[$1 "\t" $2] = $4
+        stockdesc[$1 "\t" $2] = $5
+      }
+      next
+    }
+
     # --- live bindings ---
     # havelive distinguishes "nothing is bound" from "we could not ask tmux".
     # Running the Explorer outside a tmux server is legitimate (--dump, docs
@@ -289,6 +313,17 @@ build_rows() {
           if (matched[k]) continue
           split(k, kp, "\t")
           cmd = livecmd[k]
+          if (modekeys != "" && (kp[1] == "copy-mode" || kp[1] == "copy-mode-vi")) {
+            wanted = (modekeys == "vi") ? "copy-mode-vi" : "copy-mode"
+            if (kp[1] != wanted) continue
+          }
+          if (k in stockcmd && cmd == stockcmd[k]) {
+            cat = (kp[1] ~ /^copy-mode/) ? "Copy mode" : "General"
+            rows[++nr] = catorder(cat) OFS cat OFS kp[1] OFS kp[2] \
+              OFS displaykey(kp[1], kp[2]) OFS stockdesc[k] OFS "tmux" OFS "active" \
+              OFS cmd OFS "-" OFS "tmux upstream" OFS "-" OFS "-" OFS "-" OFS "no" OFS "-"
+            continue
+          }
           reason = (k in claimed) \
             ? "Overrides the tmux-config binding for this key." \
             : "Not part of this configuration - it comes from your local.conf or an active plugin."
@@ -300,7 +335,7 @@ build_rows() {
       }
       for (i = 1; i <= nr; i++) print rows[i]
     }
-  ' "$TMP/live" "$REGISTRY" | sort -t"$TAB" -k1,1n -k2,2 -k5,5
+  ' "$STOCK" "$TMP/live" "$REGISTRY" | sort -t"$TAB" -k1,1n -k2,2 -k5,5
 }
 
 # ==============================================================================

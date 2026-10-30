@@ -18,14 +18,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install tmux
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then
             brew install tmux
           else
-            sudo apt-get update && sudo apt-get install -y tmux locales
+            sudo apt-get update && sudo apt-get install -y tmux locales python3 diffutils
             # The suite asserts UTF-8 degradation, so a real UTF-8 locale must
             # exist for the positive cases to mean anything.
             sudo locale-gen en_US.UTF-8
@@ -62,17 +62,17 @@ jobs:
         shell: sh
         run: |
           if   command -v apt-get >/dev/null; then
-            apt-get update && apt-get install -y tmux git ncurses-term locales
+            apt-get update && apt-get install -y tmux git ncurses-term locales python3 diffutils
           elif command -v dnf >/dev/null; then
-            dnf install -y tmux git ncurses procps-ng
+            dnf install -y tmux git ncurses procps-ng python3 diffutils
           elif command -v pacman >/dev/null; then
-            pacman -Sy --noconfirm tmux git ncurses
+            pacman -Syu --noconfirm --needed tmux git ncurses python diffutils
           elif command -v apk >/dev/null; then
-            apk add --no-cache tmux git ncurses bash procps
+            apk add --no-cache tmux git ncurses bash procps python3 diffutils
           fi
           tmux -V
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Static checks
         shell: sh
@@ -92,8 +92,8 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - run: pip install -r requirements-docs.txt
@@ -135,7 +135,7 @@ jobs:
       matrix:
         tmux: ["3.3a", "3.4", "3.5a", "3.6"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Build tmux ${{ matrix.tmux }}
         run: |
@@ -165,7 +165,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: keymap-${{ matrix.tmux }}
           path: keys/upstream/

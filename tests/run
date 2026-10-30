@@ -19,6 +19,12 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PASS=0; FAIL=0
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
+mkdir -p "$STAGE/home"
+HOME="$STAGE/home"
+TMUX_TMPDIR="$STAGE"
+SHELL=/bin/sh
+export HOME TMUX_TMPDIR SHELL
+unset TMUX
 
 # Materialise the repo with paths rewritten, so tests run against the working
 # tree whether or not it is the installed copy.
@@ -209,7 +215,14 @@ EM_N="$(tmux -L k1 list-keys -T copy-mode 2>/dev/null | grep -c ' -T copy-mode '
                    || assert "copy-mode table is complete" ">= 70 keys" "$EM_N"
 
 assert "copy-mode-vi H is still top-line"       "send-keys -X top-line"      "$(bound k1 copy-mode-vi 'H')"
-assert "copy-mode-vi L is still bottom-line"    "send-keys -X bottom-line"   "$(bound k1 copy-mode-vi 'L')"
+: > "$STAGE/empty.conf"
+tmux -f "$STAGE/empty.conf" -L stock new-session -d
+assert "copy-mode-vi L retains this tmux version default" "$(bound stock copy-mode-vi 'L')" "$(bound k1 copy-mode-vi 'L')"
+for reserved in g Tab @; do
+  assert "prefix $reserved retains the installed tmux default" "$(bound stock prefix "$reserved")" "$(bound k1 prefix "$reserved")"
+done
+assert "prefix B restores last-window" "last-window" "$(bound k1 prefix B)"
+stop stock
 assert "copy-mode-vi C-v is still rectangle"    "send-keys -X rectangle-toggle" "$(bound k1 copy-mode-vi 'C-v')"
 assert "copy-mode-vi v begins a selection"      "send-keys -X begin-selection"  "$(bound k1 copy-mode-vi 'v')"
 assert "copy-mode-vi y copies and cancels"      "send-keys -X copy-pipe-and-cancel" "$(bound k1 copy-mode-vi 'y')"

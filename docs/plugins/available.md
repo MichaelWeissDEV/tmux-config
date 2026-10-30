@@ -175,12 +175,12 @@ The overrides in the currently vendored snapshot:
 | Key | This config | tmux-sessionist |
 | --- | --- | --- |
 | <kbd>S</kbd> | `choose-tree -Zs` (session chooser) | `switch-client -l` |
-| <kbd>g</kbd> | floating scratch terminal | goto-session prompt |
+| <kbd>g</kbd> | native tmux move mode (3.8+) | goto-session prompt |
 | <kbd>@</kbd> | join a pane from another window | promote pane to a session |
 | <kbd>C</kbd> | tmux default `customize-mode` | new-session prompt |
 | <kbd>t</kbd> | tmux default `clock-mode` | join pane |
 
-Losing <kbd>prefix</kbd> <kbd>g</kbd> and <kbd>prefix</kbd> <kbd>S</kbd> is the
+Replacing <kbd>prefix</kbd> <kbd>g</kbd> and <kbd>prefix</kbd> <kbd>S</kbd> is the
 part most people notice. Restore them in `local.conf`, which loads after the
 plugins:
 

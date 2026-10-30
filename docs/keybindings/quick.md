@@ -17,7 +17,7 @@ Throughout, **`prefix`** means <kbd>Ctrl</kbd>+<kbd>b</kbd> unless you changed
 | --- | --- |
 | <kbd>prefix ?</kbd> | List key bindings |
 | <kbd>prefix :</kbd> | Prompt for a command |
-| <kbd>prefix g</kbd> | Toggle a floating scratch terminal ^*^ |
+| <kbd>prefix G</kbd> | Toggle a floating scratch terminal ^*^ |
 | <kbd>prefix b</kbd> | Toggle the status bar ^*^ |
 | <kbd>prefix C-k</kbd> | Clear the screen and the scrollback ^*^ |
 
@@ -38,7 +38,7 @@ Throughout, **`prefix`** means <kbd>Ctrl</kbd>+<kbd>b</kbd> unless you changed
 | <kbd>prefix c</kbd> | New window in the current directory ^+^ |
 | <kbd>prefix n</kbd> | Select the next window |
 | <kbd>prefix p</kbd> | Select the previous window |
-| <kbd>prefix Tab</kbd> | Jump to the last used window ^*^ |
+| <kbd>prefix B</kbd> | Jump to the last used window ^*^ |
 | <kbd>prefix ,</kbd> | Rename current window |
 | <kbd>prefix &</kbd> | Kill current window |
 | <kbd>prefix w</kbd> | Choose a window from a list |
