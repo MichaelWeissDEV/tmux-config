@@ -1,0 +1,35 @@
+#!/usr/bin/env sh
+# ==============================================================================
+#  versort — version-sort tmux release strings without GNU `sort -V`
+# ==============================================================================
+#
+#  Usage:  printf '%s\n' 3.7 3.7b 3.8 | scripts/versort
+#
+#  Why: gen-keys, check-key-conflicts and doctor all version-sort snapshot
+#  names, and busybox sort (the only sort on Alpine CI) has no -V at all —
+#  GNU's ability to mix it into a per-key sort ("-k3,3V") is equally out.
+#  Instead each dot-separated component is zero-padded in awk
+#  ("3.7" -> "0003.0007", "3.7b" -> "0003.0007b", "3.5a" -> "0003.0005a")
+#  and then sorted as plain text. POSIX awk only; no gawk extensions.
+#
+#  Input: one version per line. Output: the same lines, ascending. A version
+#  with no leading digits contributes 0, so it sorts first and fails low.
+# ==============================================================================
+
+LC_ALL=C
+export LC_ALL
+
+awk '
+  function pad(c,   num, suffix) {
+    if (match(c, /^[0-9]+/)) {
+      num = substr(c, 1, RLENGTH); suffix = substr(c, RLENGTH + 1)
+    } else { num = "0"; suffix = c }
+    return sprintf("%04d%s", num + 0, suffix)
+  }
+  {
+    line = ""
+    n = split($0, parts, ".")
+    for (i = 1; i <= n; i++) line = line (i > 1 ? "." : "") pad(parts[i])
+    printf "%s\t%s\n", line, $0
+  }
+' | sort -t"$(printf '\t')" -k1,1 | cut -f2

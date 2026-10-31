@@ -91,7 +91,10 @@ printf '\nProvenance and semantics\n'
 #  clear-selection), so upstream must be a leading subsequence of ours, not
 #  necessarily equal.
 
-NEWEST="$(for f in "$ROOT"/keys/upstream/tmux-*.tsv; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | tail -n1)"
+#  Version-sorted so the snapshot used as "current tmux" is the newest one we
+#  hold. scripts/versort sorts without GNU `sort -V`, which busybox sort (the
+#  Alpine CI toolchain) does not offer.
+NEWEST="$(for f in "$ROOT"/keys/upstream/tmux-*.tsv; do basename "$f" .tsv | sed 's/^tmux-//'; done | "$ROOT/scripts/versort" | tail -n1)"
 UP="$ROOT/keys/upstream/tmux-$NEWEST.tsv"
 
 REPORT="$(awk -F'\t' -v up="$UP" '

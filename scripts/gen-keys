@@ -55,9 +55,11 @@ set -- "$UPSTREAM_DIR"/tmux-*.tsv
 SNAPSHOTS="$*"
 SNAPSHOT_COUNT=$#
 
-# Version-sorted, so the first is the oldest snapshot we hold.
-OLDEST="$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | head -n1)"
-NEWEST="$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | tail -n1)"
+# Version-sorted, so the first is the oldest snapshot we hold. scripts/versort
+# does this without GNU `sort -V`, which busybox sort (the Alpine CI toolchain)
+# does not offer.
+OLDEST="$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | "$ROOT/scripts/versort" | head -n1)"
+NEWEST="$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | "$ROOT/scripts/versort" | tail -n1)"
 
 emit() {
   # ---------------------------------------------------------------------------
@@ -66,8 +68,30 @@ emit() {
   for f in $SNAPSHOTS; do
     v="$(basename "$f" .tsv | sed 's/^tmux-//')"
     awk -F'\t' -v v="$v" 'NR>4 && NF>=5 { print $1 "\t" $2 "\t" v }' "$f"
-  done | sort -t"$(printf '\t')" -k1,2 -k3,3V \
-       | awk -F'\t' '!seen[$1"\t"$2]++ { print }' > "$TMPD/firstseen"
+  done |
+  # A per-key version sort ("-k3,3V", a GNU extension) picked the first of
+  # each key as its firstseen. awk reaches the same minimum directly — busybox
+  # sort cannot express that spec — by comparing the versions zero-padded.
+  # Row order here is irrelevant: every consumer looks rows up by
+  # (table,key), and the merged output re-sorts deterministically.
+  awk -F'\t' '
+    function pad(c,   num, suffix) {
+      if (match(c, /^[0-9]+/)) {
+        num = substr(c, 1, RLENGTH); suffix = substr(c, RLENGTH + 1)
+      } else { num = "0"; suffix = c }
+      return sprintf("%04d%s", num + 0, suffix)
+    }
+    function vkey(ver,   n, i, parts, out) {
+      out = ""
+      n = split(ver, parts, ".")
+      for (i = 1; i <= n; i++) out = out (i > 1 ? "." : "") pad(parts[i])
+      return out
+    }
+    NF < 3 { next }
+    { k = $1 "\t" $2; vk = vkey($3)
+      if (!(k in minvk) || vk < minvk[k]) { minvk[k] = vk; minver[k] = $3 } }
+    END { for (k in minver) print k "\t" minver[k] }
+  ' > "$TMPD/firstseen"
 
   # The newest snapshot defines the CURRENT upstream keymap. Older-only keys
   # are bindings tmux has since removed; they are not emitted as active.
@@ -208,7 +232,7 @@ trap 'rm -rf "$TMPD"' EXIT
 header() {
   printf '# tmux-config merged key registry — GENERATED, do not edit\n'
   printf '# regenerate with: ./scripts/gen-keys\n'
-  printf '# upstream snapshots: %s\n' "$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | sort -V | tr '\n' ' ' | sed 's/ $//')"
+  printf '# upstream snapshots: %s\n' "$(for f in $SNAPSHOTS; do basename "$f" .tsv | sed 's/^tmux-//'; done | "$ROOT/scripts/versort" | tr '\n' ' ' | sed 's/ $//')"
   printf 'table\tkey\tcommand\tdescription\tcategory\torigin\trepeatable\tmin_tmux_version\tdisplaces\ttags\tcondition\tplugin\tlong_description\n'
 }
 

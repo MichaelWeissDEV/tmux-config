@@ -46,7 +46,10 @@ if ! command -v tmux >/dev/null 2>&1; then
 fi
 
 TMUX_VER="$(tmux -V | sed 's/[^0-9.]//g')"
-if [ "$(printf '%s\n3.3\n' "$TMUX_VER" | sort -V | head -n1)" = "3.3" ]; then
+# Version comparison without GNU `sort -V` (busybox sort has none): see
+# scripts/versort. The floor 3.3 wins the head-versort unless the installed
+# tmux is newer.
+if [ "$(printf '%s\n3.3\n' "$TMUX_VER" | "$ROOT/scripts/versort" | head -n1)" = "3.3" ]; then
   pass "tmux $TMUX_VER (>= 3.3 required)"
 else
   fail "tmux $TMUX_VER is too old — 3.3 or newer is required" \

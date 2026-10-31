@@ -13,6 +13,19 @@ setting. Renamed options and changed defaults count. New opt-in features do not.
 
 ### Fixed
 
+- The whole check suite now runs under a busybox toolchain (the only one on
+  Alpine CI). Version sorts go through the new `scripts/versort`, which
+  zero-pads each version component and plain-sorts instead of relying on GNU
+  `sort -V` / `-k3,3V`; `gen-keys` picks each binding's first-seen snapshot
+  with equivalent awk logic; and `gen-upstream-keys` pairs binding and note
+  lines in awk instead of `paste`, whose busybox variant collapses unmatched
+  leftover lines into a single row and silently corrupted the capture.
+- `scripts/check` reports live bindings the registry does not explain as
+  information rather than failure when the running tmux version has no
+  committed upstream snapshot (Alpine's tmux 3.7c sits between the committed
+  3.7b and 3.8, so a few upstream defaults legitimately differ from the
+  3.8-based registry). Where a snapshot for the running version exists, the
+  direction stays strictly enforced.
 - Dropped the dangling `vendor/tmux-resurrect/lib/tmux-test` gitlink. It
   was an empty entry with no `.gitmodules` URL, which made `git submodule
   foreach` (and therefore CI checkout cleanup) fail repo-wide. The vendored

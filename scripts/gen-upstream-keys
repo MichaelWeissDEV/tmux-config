@@ -146,7 +146,13 @@ emit() {
     env -u TMUX tmux -L "$SOCKET" list-keys -N -T "$table" 2>/dev/null \
       > "$TMPD/note.$table" || : > "$TMPD/note.$table"
 
-    paste "$TMPD/bind.$table" "$TMPD/note.$table" | awk -F'\t' -v tbl="$table" '
+    # Bind and note lines are paired line for line, like GNU paste pairs its
+    # inputs (longer file wins, shorter file padded with empty columns). paste
+    # itself is not used: busybox paste — the only paste on the Alpine CI
+    # toolchain — instead renders leftover lines of the longer file as extra
+    # columns of ONE output row, which silently corrupts the join. The pairing
+    # is done in awk on the two files directly.
+    awk -F'\t' -v tbl="$table" -v notefile="$TMPD/note.$table" '
       function titlecase(v) {
         gsub(/-/, " ", v)
         if (v == "") return "-"
@@ -175,8 +181,9 @@ emit() {
         sub(/ .*$/, "", v)
         return titlecase(v)
       }
+      FILENAME == notefile { notes[FNR] = $0; nnotes = FNR; next }
       {
-        key = $2; cmd = $4; note = $5
+        key = $2; cmd = $4; note = (FNR <= nnotes) ? notes[FNR] : ""
 
         # Strip the leading prefix token the -N view prints for the prefix
         # table ("C-b Space  Select next layout"), then require the expected
@@ -195,7 +202,7 @@ emit() {
         gsub(/\t/, " ", note)
         printf "%s\t%s\t%s\t%s\t%s\n", $1, key, $3, cmd, note
       }
-    ' | sort -t"$(printf '\t')" -k2,2
+    ' "$TMPD/note.$table" "$TMPD/bind.$table" | sort -t"$(printf '\t')" -k2,2
   done
 }
 
