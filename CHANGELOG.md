@@ -13,6 +13,10 @@ setting. Renamed options and changed defaults count. New opt-in features do not.
 
 ### Fixed
 
+- Dropped the dangling `vendor/tmux-resurrect/lib/tmux-test` gitlink. It
+  was an empty entry with no `.gitmodules` URL, which made `git submodule
+  foreach` (and therefore CI checkout cleanup) fail repo-wide. The vendored
+  upstream copy never used it in this configuration.
 - Define `@cfg_theme_file`, install all CI generator prerequisites, and preserve
   native defaults across tmux versions in the Key Explorer. Generator failures
   now include their diagnostics instead of only reporting stale output.
